@@ -1,23 +1,15 @@
-import axios from "axios"
+import { jwtVerify } from "jose"
 import { NextRequest, NextResponse } from "next/server"
 
 export const config = {
   matcher: "/((?!api|_next/static|_next/image|favicon.ico).*)",
 }
 
+// Convert secret key into a format the 'jose' library understands
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET)
+
 export async function proxy(request: NextRequest) {
-  // Extract pathname
   const pathname = request.nextUrl.pathname
-
-  // Check if pathname starts with any of the excluded paths
-  const isExcluded = ["_next/static", "_next/image", "favicon.ico"].some(
-    (excludedPath) => pathname.startsWith(`/${excludedPath}`)
-  )
-
-  // If the request is for an excluded path, let Next.js handle it normally
-  if (isExcluded) {
-    return NextResponse.next()
-  }
 
   const isPublic =
     pathname === "/" ||
@@ -35,24 +27,10 @@ export async function proxy(request: NextRequest) {
   }
 
   try {
-    const response = await axios.get(
-      process.env.NEXT_PUBLIC_API_URL! + "/auth/me",
-      {
-        headers: {
-          Authorization: `Bearer ${cookie}`,
-          Cookie: `accessToken=${cookie}`,
-        },
-        timeout: 3000,
-      }
-    )
-
-    if (response.status !== 200 || !response.data?.id) {
-      return NextResponse.redirect(new URL("/login", request.url))
-    }
+    await jwtVerify(cookie, JWT_SECRET)
 
     return NextResponse.next()
   } catch (error) {
-    // Backend may still be booting or token is invalid/expired
     return NextResponse.redirect(new URL("/login", request.url))
   }
 }
