@@ -29,5 +29,6 @@
   },
   "[html]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "prisma.pinToPrisma6": false
 }
