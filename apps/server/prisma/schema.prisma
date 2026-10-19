@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum WorkspaceVisibility {
+  PRIVATE
+  PUBLIC
+  UNLISTED
+}
+
+enum WorkspaceStatus {
+  CREATING
+  READY
+  ARCHIVED
+  ERROR
+}
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum SnapshotTrigger {
+  MANUAL
+  AUTO
+  SHUTDOWN
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum SessionStatus {
+  STARTING
+  ACTIVE
+  DISCONNECTED
+  TERMINATED
+}
+
+// =========================================
+// CORE USERS
+// =========================================
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique @db.VarChar(50)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String
+  isVerified   Boolean
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  ownedWorkspaces      Workspace[]
+  workspaceMemberships WorkspaceMember[]
+  workspaceSessions    WorkspaceSession[]
+}
+
+// =========================================
+// CLOUD IDE WORKSPACES & S3 BACKUP
+// =========================================
+
+model Workspace {
+  id          String              @id @default(uuid()) @db.Uuid
+  ownerId     String              @db.Uuid
+  name        String              @db.VarChar(100)
+  slug        String              @db.VarChar(100)
+  description String?
+  framework   String              @db.VarChar(50)
+  gitUrl      String?
+  visibility  WorkspaceVisibility @default(PRIVATE)
+  status      WorkspaceStatus     @default(CREATING)
+
+  // S3 backup and persistence tracking
+  s3Bucket     String @db.VarChar(100)
+  s3Prefix     String @db.VarChar(255)
+  storageBytes BigInt @default(0)
+
+  lastAccessedAt DateTime @default(now()) @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  owner     User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members   WorkspaceMember[]
+  invites   WorkspaceInvite[]
+  snapshots WorkspaceSnapshot[]
+  envVars   WorkspaceEnvVar[]
+  sessions  WorkspaceSession[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId])
+  @@index([status])
+}
+
+model WorkspaceSnapshot {
+  id          String          @id @default(uuid()) @db.Uuid
+  workspaceId String          @db.Uuid
+  title       String?         @db.VarChar(100)
+  description String?
+  s3Key       String          @db.VarChar(500)
+  sizeBytes   BigInt          @default(0)
+  trigger     SnapshotTrigger @default(AUTO)
+  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
+  role        WorkspaceRole @default(EDITOR)
+  joinedAt    DateTime      @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model WorkspaceInvite {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  email       String        @db.VarChar(255) // Not userId as invitee might not have account yet
+  role        WorkspaceRole @default(EDITOR)
+  token       String        @unique @db.VarChar(255)
+  status      InviteStatus  @default(PENDING)
+  expiresAt   DateTime      @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email, status])
+  @@index([email, status])
+  @@index([token])
+}
+
+model WorkspaceEnvVar {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  key         String   @db.VarChar(255)
+  value       String
+  isSecret    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, key])
+}
+
+model WorkspaceSession {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
+  nodeOrHost  String?       @db.VarChar(100)
+  status      SessionStatus @default(STARTING)
+  startedAt   DateTime      @default(now()) @db.Timestamptz(6)
+  endedAt     DateTime?     @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+}
