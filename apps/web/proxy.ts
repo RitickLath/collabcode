@@ -33,16 +33,26 @@ export async function proxy(request: NextRequest) {
   if (!cookie) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
-  const response = await axios.get(
-    process.env.NEXT_PUBLIC_API_URL! + "/auth/me",
-    {
-      withCredentials: true,
-    }
-  )
 
-  if (!response.data.ok) {
+  try {
+    const response = await axios.get(
+      process.env.NEXT_PUBLIC_API_URL! + "/auth/me",
+      {
+        headers: {
+          Authorization: `Bearer ${cookie}`,
+          Cookie: `accessToken=${cookie}`,
+        },
+        timeout: 3000,
+      }
+    )
+
+    if (response.status !== 200 || !response.data?.id) {
+      return NextResponse.redirect(new URL("/login", request.url))
+    }
+
+    return NextResponse.next()
+  } catch (error) {
+    // Backend may still be booting or token is invalid/expired
     return NextResponse.redirect(new URL("/login", request.url))
   }
-
-  return NextResponse.next()
 }
