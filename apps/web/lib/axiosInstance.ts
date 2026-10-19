@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios"
 
 export class ApiClient {
   private static client = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
+    baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api",
     withCredentials: true,
     headers: {
       "Content-Type": "application/json",

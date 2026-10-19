@@ -196,7 +196,7 @@ export class AuthService implements OnModuleInit {
   }
 
   async login(body: LoginAuthDto) {
-    const identifier = body.username.trim().toLowerCase();
+    const identifier = body.identifier.trim().toLowerCase();
 
     const user = await this.prisma.user.findFirst({
       where: {

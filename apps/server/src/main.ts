@@ -12,8 +12,11 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  const clientUrl =
+    configService.get<string>('CLIENT_URL') ?? 'http://localhost:3000';
+
   app.enableCors({
-    origin: '*',
+    origin: clientUrl,
     credentials: true,
   });
   app.setGlobalPrefix('api');

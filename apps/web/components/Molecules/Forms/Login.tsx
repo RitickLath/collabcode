@@ -20,6 +20,8 @@ export default function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log(identifier.trim())
+    console.log(password)
     if (!identifier.trim() || !password) return
 
     setError(null)

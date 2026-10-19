@@ -45,7 +45,7 @@ export class LoginAuthDto {
   @Transform(({ value }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
-  username: string;
+  identifier: string;
 
   @IsString()
   @IsNotEmpty()
