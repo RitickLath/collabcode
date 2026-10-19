@@ -328,4 +328,4 @@ export {
   NewFolderIcon,
   RefreshIcon,
   CollapseAllIcon,
-} from "./ExplorerIcons.js"
+} from "./ExplorerIcons"
