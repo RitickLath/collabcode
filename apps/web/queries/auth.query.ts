@@ -1,8 +1,5 @@
 import { AuthService } from "@/services/auth.service"
-import {
-  LoginProps,
-  RegisterProps,
-} from "@workspace/typescript-config/types/auth"
+import { LoginProps, RegisterProps } from "@workspace/types/auth"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 

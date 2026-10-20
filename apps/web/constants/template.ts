@@ -28,7 +28,7 @@ export const WORKSPACE_TEMPLATES: StarterTemplate[] = [
     color: "from-cyan-500/20 to-teal-500/20 text-cyan-400",
   },
   {
-    id: "NODEJS",
+    id: "NODE",
     title: "Node.js + Express",
     description: "REST API boilerplate, TypeScript 5, Prisma ORM ready.",
     tags: ["Express 4.x", "Prisma", "REST"],

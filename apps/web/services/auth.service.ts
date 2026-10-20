@@ -1,8 +1,5 @@
 import { ApiClient } from "@/lib/axiosInstance"
-import {
-  LoginProps,
-  RegisterProps,
-} from "@workspace/typescript-config/types/auth"
+import { LoginProps, RegisterProps } from "@workspace/types/auth"
 
 export const AuthService = {
   register: async (body: RegisterProps) => {
