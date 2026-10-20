@@ -1,27 +1,71 @@
 import { ApiClient } from "@/lib/axiosInstance"
 import {
   WorkspaceItem,
+  PaginatedWorkspacesResponse,
+  GetWorkspacesParams,
   CreateWorkspaceTemplatePayload,
   CreateWorkspaceGitPayload,
 } from "@/types/workspace"
 
 export const WorkspaceService = {
   /**
-   * Fetch all workspaces for the current user
+   * Fetch paginated workspaces for the current user
    */
-  getAllWorkspaces: async (): Promise<WorkspaceItem[]> => {
+  getAllWorkspaces: async (
+    params?: GetWorkspacesParams
+  ): Promise<PaginatedWorkspacesResponse> => {
     try {
-      const response: any = await ApiClient.get("/workspace")
+      const response: any = await ApiClient.get("/workspace", {
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 6,
+        role: params?.role,
+        search: params?.search,
+      })
+
       const data = response?.data ?? response
-      return Array.isArray(data) ? data : []
+
+      // Handle paginated response
+      if (data && Array.isArray(data.items)) {
+        return data as PaginatedWorkspacesResponse
+      }
+
+      // Handle legacy flat array fallback
+      if (Array.isArray(data)) {
+        return {
+          items: data,
+          meta: {
+            page: 1,
+            limit: data.length,
+            total: data.length,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        }
+      }
+
+      return {
+        items: [],
+        meta: {
+          page: 1,
+          limit: 6,
+          total: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      }
     } catch {
-      // Fallback if backend route is /project
-      try {
-        const response: any = await ApiClient.get("/project")
-        const data = response?.data ?? response
-        return Array.isArray(data) ? data : []
-      } catch {
-        return []
+      return {
+        items: [],
+        meta: {
+          page: 1,
+          limit: 6,
+          total: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       }
     }
   },

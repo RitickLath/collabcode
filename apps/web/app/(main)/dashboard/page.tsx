@@ -9,23 +9,67 @@ import { DashboardBanner } from "@/components/Organism/Dashboard/DashboardBanner
 import { DashboardMetrics } from "@/components/Organism/Dashboard/DashboardMetrics"
 import { WorkspaceCard } from "@/components/Molecules/Workspace/WorkspaceCard"
 import { WorkspaceEmptyState } from "@/components/Molecules/Workspace/WorkspaceEmptyState"
+import { WorkspacePagination } from "@/components/Molecules/Workspace/WorkspacePagination"
+import {
+  WorkspaceFilterBar,
+  RoleFilterOption,
+} from "@/components/Molecules/Workspace/WorkspaceFilterBar"
 import { CreateWorkspaceModal } from "@/components/Organism/Workspace/CreateWorkspaceModal"
 import { useGetWorkspacesQuery } from "@/queries/workspace.query"
 import { useMeQuery } from "@/queries/auth.query"
+
+const CATEGORIES = ["All", "Fullstack", "Frontend", "Backend", "Git"] as const
 
 export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalView, setModalView] = useState<"template" | "git">("template")
   const [search, setSearch] = useState("")
+  const [roleFilter, setRoleFilter] = useState<RoleFilterOption>("all")
+  const [activeCategory, setActiveCategory] = useState<string>("All")
+  const [page, setPage] = useState(1)
+  const limit = 6
 
-  const { data: workspaces = [], isLoading } = useGetWorkspacesQuery()
+  const { data: workspacesResponse, isLoading } = useGetWorkspacesQuery({
+    page,
+    limit,
+    role: roleFilter,
+    search: search.trim() || undefined,
+  })
+
   const { data: currentUser } = useMeQuery()
 
-  const runningWorkspaces = useMemo(
-    () => workspaces.filter((w) => w.status === "READY"),
-    [workspaces]
-  )
+  const workspaces = workspacesResponse?.items || []
+  const meta = workspacesResponse?.meta || {
+    page: 1,
+    limit: 6,
+    total: workspaces.length,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  }
 
+  // Filter client-side category if selected
+  const displayedWorkspaces = useMemo(() => {
+    if (activeCategory === "All") return workspaces
+
+    return workspaces.filter((w) => {
+      const fw = w.framework.toUpperCase()
+      switch (activeCategory) {
+        case "Git":
+          return Boolean(w.gitUrl) || fw === "GIT"
+        case "Frontend":
+          return ["REACT", "VITE", "HTML"].includes(fw)
+        case "Fullstack":
+          return ["NEXTJS"].includes(fw)
+        case "Backend":
+          return ["NODEJS", "PYTHON", "FASTAPI", "NESTJS"].includes(fw)
+        default:
+          return true
+      }
+    })
+  }, [workspaces, activeCategory])
+
+  const runningCount = workspaces.filter((w) => w.status === "READY").length
   const totalCollaborators = useMemo(() => {
     const emails = new Set<string>()
     workspaces.forEach((w) => {
@@ -36,20 +80,19 @@ export default function DashboardPage() {
     return emails.size
   }, [workspaces])
 
-  const filteredWorkspaces = useMemo(() => {
-    if (!search.trim()) return workspaces
-    const q = search.toLowerCase()
-    return workspaces.filter(
-      (w) =>
-        w.name.toLowerCase().includes(q) ||
-        w.framework.toLowerCase().includes(q) ||
-        w.description?.toLowerCase().includes(q)
-    )
-  }, [workspaces, search])
-
   const handleOpenModal = (view: "template" | "git" = "template") => {
     setModalView(view)
     setModalOpen(true)
+  }
+
+  const handleRoleChange = (newRole: RoleFilterOption) => {
+    setRoleFilter(newRole)
+    setPage(1)
+  }
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val)
+    setPage(1)
   }
 
   const userDisplayName =
@@ -68,8 +111,8 @@ export default function DashboardPage() {
 
         {/* Metrics Grid */}
         <DashboardMetrics
-          totalWorkspaces={workspaces.length}
-          runningWorkspacesCount={runningWorkspaces.length}
+          totalWorkspaces={meta.total || workspaces.length}
+          runningWorkspacesCount={runningCount}
           totalCollaborators={totalCollaborators}
         />
 
@@ -85,30 +128,29 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Filter workspaces..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-8.5 w-48 border-border/50 bg-card/40 pr-3 pl-8 text-xs sm:w-60"
-                />
-              </div>
-
-              <Link
-                href="/projects"
-                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                <span>View all</span>
-                <ArrowUpRight className="h-3 w-3" />
-              </Link>
-            </div>
+            <Link
+              href="/projects"
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <span>View all projects</span>
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </div>
+
+          {/* Filter Bar with Role Selector (All / Owned by me / Shared with me) */}
+          <WorkspaceFilterBar
+            categories={CATEGORIES}
+            activeCategory={activeCategory}
+            onSelectCategory={setActiveCategory}
+            search={search}
+            onSearchChange={handleSearchChange}
+            roleFilter={roleFilter}
+            onRoleFilterChange={handleRoleChange}
+          />
 
           {/* Loading */}
           {isLoading && (
-            <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-xl border border-border/40 bg-card/20">
+            <div className="flex h-44 flex-col items-center justify-center gap-3 rounded-xl border border-border/40 bg-card/20">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <p className="text-xs text-muted-foreground">
                 Loading your workspaces...
@@ -117,21 +159,27 @@ export default function DashboardPage() {
           )}
 
           {/* Empty */}
-          {!isLoading && workspaces.length === 0 && (
+          {!isLoading && displayedWorkspaces.length === 0 && (
             <WorkspaceEmptyState
-              title="No active workspaces yet"
-              description="Get started by launching a template or importing a Git repository into an isolated cloud container."
+              hasFilter={Boolean(
+                search || activeCategory !== "All" || roleFilter !== "all"
+              )}
               onCreateClick={() => handleOpenModal("template")}
             />
           )}
 
           {/* Grid */}
-          {!isLoading && filteredWorkspaces.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredWorkspaces.slice(0, 6).map((project) => (
-                <WorkspaceCard key={project.id} project={project} />
-              ))}
-            </div>
+          {!isLoading && displayedWorkspaces.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {displayedWorkspaces.map((project) => (
+                  <WorkspaceCard key={project.id} project={project} />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              <WorkspacePagination meta={meta} onPageChange={setPage} />
+            </>
           )}
         </div>
       </main>

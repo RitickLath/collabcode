@@ -1,17 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { WorkspaceService } from "@/services/workspace.service"
 import {
-  WorkspaceItem,
+  PaginatedWorkspacesResponse,
+  GetWorkspacesParams,
   CreateWorkspaceTemplatePayload,
   CreateWorkspaceGitPayload,
 } from "@/types/workspace"
 import { toast } from "sonner"
 
-export const useGetWorkspacesQuery = () => {
-  return useQuery<WorkspaceItem[]>({
-    queryKey: ["workspaces"],
-    queryFn: () => WorkspaceService.getAllWorkspaces(),
-    refetchInterval: 10000, // Poll occasionally to update CREATING -> READY status
+export const useGetWorkspacesQuery = (params?: GetWorkspacesParams) => {
+  return useQuery<PaginatedWorkspacesResponse>({
+    queryKey: [
+      "workspaces",
+      params?.page,
+      params?.limit,
+      params?.role,
+      params?.search,
+    ],
+    queryFn: () => WorkspaceService.getAllWorkspaces(params),
+    // Only poll if at least one workspace is currently in "CREATING" status
+    refetchInterval: (query) => {
+      const data = query.state.data as PaginatedWorkspacesResponse | undefined
+      const hasPending = data?.items?.some((w) => w.status === "CREATING")
+      return hasPending ? 3000 : false
+    },
   })
 }
 

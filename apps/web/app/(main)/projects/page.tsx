@@ -4,63 +4,79 @@ import React, { useState, useMemo } from "react"
 import { Loader2 } from "lucide-react"
 import { AppHeader } from "@/components/Organism/Dashboard/AppHeader"
 import { WorkspacesHeader } from "@/components/Organism/Workspace/WorkspacesHeader"
-import { WorkspaceFilterBar } from "@/components/Molecules/Workspace/WorkspaceFilterBar"
+import {
+  WorkspaceFilterBar,
+  RoleFilterOption,
+} from "@/components/Molecules/Workspace/WorkspaceFilterBar"
 import { WorkspaceCard } from "@/components/Molecules/Workspace/WorkspaceCard"
 import { WorkspaceEmptyState } from "@/components/Molecules/Workspace/WorkspaceEmptyState"
+import { WorkspacePagination } from "@/components/Molecules/Workspace/WorkspacePagination"
 import { CreateWorkspaceModal } from "@/components/Organism/Workspace/CreateWorkspaceModal"
 import { useGetWorkspacesQuery } from "@/queries/workspace.query"
 
-const CATEGORIES = [
-  "All",
-  "Recent",
-  "Fullstack",
-  "Frontend",
-  "Backend",
-  "Git",
-] as const
+const CATEGORIES = ["All", "Fullstack", "Frontend", "Backend", "Git"] as const
 
 export default function WorkspacesListPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalView, setModalView] = useState<"template" | "git">("template")
   const [activeCategory, setActiveCategory] = useState<string>("All")
+  const [roleFilter, setRoleFilter] = useState<RoleFilterOption>("all")
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const limit = 6
 
-  const { data: workspaces = [], isLoading } = useGetWorkspacesQuery()
+  const { data: workspacesResponse, isLoading } = useGetWorkspacesQuery({
+    page,
+    limit,
+    role: roleFilter,
+    search: search.trim() || undefined,
+  })
+
+  const workspaces = workspacesResponse?.items || []
+  const meta = workspacesResponse?.meta || {
+    page: 1,
+    limit: 6,
+    total: workspaces.length,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  }
 
   const handleOpenModal = (view: "template" | "git" = "template") => {
     setModalView(view)
     setModalOpen(true)
   }
 
-  const filteredWorkspaces = useMemo(() => {
+  const handleRoleChange = (newRole: RoleFilterOption) => {
+    setRoleFilter(newRole)
+    setPage(1)
+  }
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val)
+    setPage(1)
+  }
+
+  // Filter client-side category if selected
+  const displayedWorkspaces = useMemo(() => {
+    if (activeCategory === "All") return workspaces
+
     return workspaces.filter((w) => {
-      // Category filter
-      let matchesCat = true
-      if (activeCategory === "Git") {
-        matchesCat = Boolean(w.gitUrl) || w.framework === "git"
-      } else if (activeCategory === "Frontend") {
-        matchesCat = ["REACT", "VITE", "HTML"].includes(
-          w.framework.toUpperCase()
-        )
-      } else if (activeCategory === "Fullstack") {
-        matchesCat = ["NEXTJS"].includes(w.framework.toUpperCase())
-      } else if (activeCategory === "Backend") {
-        matchesCat = ["NODEJS", "PYTHON", "FASTAPI", "NESTJS"].includes(
-          w.framework.toUpperCase()
-        )
+      const fw = w.framework.toUpperCase()
+      switch (activeCategory) {
+        case "Git":
+          return Boolean(w.gitUrl) || fw === "GIT"
+        case "Frontend":
+          return ["REACT", "VITE", "HTML"].includes(fw)
+        case "Fullstack":
+          return ["NEXTJS"].includes(fw)
+        case "Backend":
+          return ["NODEJS", "PYTHON", "FASTAPI", "NESTJS"].includes(fw)
+        default:
+          return true
       }
-
-      // Search query filter
-      const q = search.toLowerCase()
-      const matchesSearch =
-        !q ||
-        w.name.toLowerCase().includes(q) ||
-        w.framework.toLowerCase().includes(q) ||
-        w.description?.toLowerCase().includes(q)
-
-      return matchesCat && matchesSearch
     })
-  }, [workspaces, activeCategory, search])
+  }, [workspaces, activeCategory])
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -70,13 +86,15 @@ export default function WorkspacesListPage() {
         {/* Top title and action bar */}
         <WorkspacesHeader onOpenModal={handleOpenModal} />
 
-        {/* Filters and search bar */}
+        {/* Filters and search bar with Role Selector */}
         <WorkspaceFilterBar
           categories={CATEGORIES}
           activeCategory={activeCategory}
           onSelectCategory={setActiveCategory}
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
+          roleFilter={roleFilter}
+          onRoleFilterChange={handleRoleChange}
           placeholder="Search workspaces by name or stack..."
         />
 
@@ -91,20 +109,27 @@ export default function WorkspacesListPage() {
         )}
 
         {/* Empty state */}
-        {!isLoading && filteredWorkspaces.length === 0 && (
+        {!isLoading && displayedWorkspaces.length === 0 && (
           <WorkspaceEmptyState
-            hasFilter={Boolean(search || activeCategory !== "All")}
+            hasFilter={Boolean(
+              search || activeCategory !== "All" || roleFilter !== "all"
+            )}
             onCreateClick={() => handleOpenModal("template")}
           />
         )}
 
         {/* Workspaces Grid */}
-        {!isLoading && filteredWorkspaces.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredWorkspaces.map((project) => (
-              <WorkspaceCard key={project.id} project={project} />
-            ))}
-          </div>
+        {!isLoading && displayedWorkspaces.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {displayedWorkspaces.map((project) => (
+                <WorkspaceCard key={project.id} project={project} />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            <WorkspacePagination meta={meta} onPageChange={setPage} />
+          </>
         )}
       </main>
 

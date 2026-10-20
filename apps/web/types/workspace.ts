@@ -28,6 +28,27 @@ export interface WorkspaceItem {
   }>
 }
 
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+}
+
+export interface PaginatedWorkspacesResponse {
+  items: WorkspaceItem[]
+  meta: PaginationMeta
+}
+
+export interface GetWorkspacesParams {
+  page?: number
+  limit?: number
+  role?: "all" | "owner" | "member"
+  search?: string
+}
+
 export interface CreateWorkspaceTemplatePayload {
   framework: string
   name: string
