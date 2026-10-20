@@ -46,6 +46,18 @@ enum SessionStatus {
   TERMINATED
 }
 
+enum ProjectTemplate {
+  REACT
+  NEXTJS
+  NODE
+  PYTHON
+  NESTJS
+  FASTAPI
+  EXPRESSJS
+  VITE
+  TURBOREPO
+}
+
 // =========================================
 // CORE USERS
 // =========================================
@@ -74,7 +86,7 @@ model Workspace {
   name        String              @db.VarChar(100)
   slug        String              @db.VarChar(100)
   description String?
-  framework   String              @db.VarChar(50)
+  framework   ProjectTemplate     @default(REACT)
   gitUrl      String?
   visibility  WorkspaceVisibility @default(PRIVATE)
   status      WorkspaceStatus     @default(CREATING)

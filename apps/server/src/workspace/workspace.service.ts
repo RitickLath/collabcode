@@ -1,15 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   CreateWorkspaceTemplateDto,
   CreateWorkspaceGitDto,
   GetWorkspacesQueryDto,
-} from './workspace.dto';
+  SendWorkspaceInviteDto,
+} from './dto/workspace.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { getMockWorkspaces } from 'src/common/mock/workspace.mock';
+import { ConfigService } from '@nestjs/config';
+import { Prisma } from 'generated/prisma/client';
+import { WorkspaceQueue } from './queue/workspace.queue';
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+    private readonly workspaceQueue: WorkspaceQueue,
+  ) {}
 
   /**
    * Retrieves paginated workspaces where the user is either the owner or an assigned member.
@@ -156,15 +164,182 @@ export class WorkspaceService {
     return workspace;
   }
 
+  /**
+   * Creates a new workspace initialized with a predefined framework template.
+   * Handles unique slug enforcement and queues a BullMQ job to provision project files to S3.
+   */
   async createWithTemplate(dto: CreateWorkspaceTemplateDto, userId: string) {
+    let workspace;
+    try {
+      workspace = await this.prisma.workspace.create({
+        data: {
+          ownerId: userId,
+          name: dto.name,
+          description: dto.description,
+          framework: dto.framework,
+          slug: dto.name,
+          s3Bucket: this.configService.get('S3_BUCKET_WORKSPACE') || '',
+          s3Prefix: `workspaces/${userId}/${dto.name}/`,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Workspace with this name already exists',
+        );
+      }
+      throw error;
+    }
+
+    // OFFLOAD THE PROJECT CREATION PART TO BULLMQ
+    const jobPayload = {
+      workspaceId: workspace.id,
+      userId,
+      name: workspace.name,
+      framework: dto.framework,
+      s3Bucket: workspace.s3Bucket,
+      s3Prefix: workspace.s3Prefix,
+    };
+
+    try {
+      await this.workspaceQueue.addTemplateWorkspaceJob(jobPayload);
+    } catch (queueError) {
+      // If queuing fails, mark workspace as ERROR so it doesn't hang in CREATING forever
+      await this.prisma.workspace.update({
+        where: { id: workspace.id },
+        data: { status: 'ERROR' },
+      });
+      throw queueError;
+    }
+
     return {
       message: 'Workspace created',
+      data: {
+        id: workspace.id,
+        workspaceStatus: workspace.status,
+        createdAt: workspace.createdAt,
+        framework: workspace.framework,
+        name: workspace.name,
+        description: workspace.description,
+      },
     };
   }
 
+  /**
+   * Creates a new workspace cloned from a remote Git repository.
+   * Handles unique slug enforcement and queues a BullMQ job to clone the repository and sync to S3.
+   */
   async createWithGit(dto: CreateWorkspaceGitDto, userId: string) {
+    let workspace;
+    try {
+      workspace = await this.prisma.workspace.create({
+        data: {
+          ownerId: userId,
+          name: dto.name,
+          description: dto.description,
+          gitUrl: dto.gitUrl,
+          slug: dto.name,
+          s3Bucket: this.configService.get('S3_BUCKET_WORKSPACE') || '',
+          s3Prefix: `workspaces/${userId}/${dto.name}/`,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Workspace with this name already exists',
+        );
+      }
+      throw error;
+    }
+
+    // OFFLOAD THE GIT CLONE & SYNC TASK TO BULLMQ
+    const jobPayload = {
+      workspaceId: workspace.id,
+      userId,
+      name: workspace.name,
+      gitUrl: dto.gitUrl,
+      s3Bucket: workspace.s3Bucket,
+      s3Prefix: workspace.s3Prefix,
+    };
+
+    try {
+      await this.workspaceQueue.addGitWorkspaceJob(jobPayload);
+    } catch (queueError) {
+      await this.prisma.workspace.update({
+        where: { id: workspace.id },
+        data: { status: 'ERROR' },
+      });
+      throw queueError;
+    }
+
     return {
-      message: 'Git workspace creation initiated',
+      message: 'Git workspace created',
+      data: {
+        id: workspace.id,
+        workspaceStatus: workspace.status,
+        createdAt: workspace.createdAt,
+        name: workspace.name,
+        gitUrl: workspace.gitUrl,
+        description: workspace.description,
+      },
+    };
+  }
+
+  /**
+   * Accepts a workspace invitation via token and adds the user as a member.
+   */
+  async acceptInvite(token: string, userId: string) {
+    // TODO: Validate token, check expiry, create WorkspaceMember and update invite status
+    return {
+      message: 'Invite accepted successfully',
+    };
+  }
+
+  /**
+   * Creates a pending invitation and emails the invite link to the recipient.
+   */
+  async sendInvite(
+    workspaceId: string,
+    dto: SendWorkspaceInviteDto,
+    userId: string,
+  ) {
+    // TODO: Verify userId is OWNER/EDITOR, create WorkspaceInvite, and dispatch email
+    return {
+      message: 'Invite sent successfully',
+    };
+  }
+
+  /**
+   * Lists all active/pending invitations for a given workspace.
+   */
+  async getInvites(workspaceId: string, userId: string) {
+    // TODO: Fetch pending invites for workspace if user is member
+    return [];
+  }
+
+  /**
+   * Revokes or cancels a pending workspace invitation.
+   */
+  async revokeInvite(workspaceId: string, inviteId: string, userId: string) {
+    // TODO: Delete or mark invite CANCELLED
+    return {
+      message: 'Invite revoked successfully',
+    };
+  }
+
+  /**
+   * Removes a member from the workspace.
+   */
+  async removeMember(workspaceId: string, memberId: string, userId: string) {
+    // TODO: Remove WorkspaceMember record verifying permissions
+    return {
+      message: 'Member removed successfully',
     };
   }
 }

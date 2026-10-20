@@ -5,6 +5,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import { ProjectTemplate } from 'generated/prisma/client';
 
 export class GetWorkspacesQueryDto {
   @IsOptional()
@@ -32,9 +33,10 @@ export class CreateWorkspaceTemplateDto {
   @MaxLength(100)
   name: string;
 
-  @IsString()
-  @IsNotEmpty()
-  framework: string;
+  @IsEnum(ProjectTemplate, {
+    message: `framework must be one of: ${Object.values(ProjectTemplate).join(', ')}`,
+  })
+  framework: ProjectTemplate;
 
   @IsOptional()
   @IsString()
@@ -54,4 +56,22 @@ export class CreateWorkspaceGitDto {
   @IsOptional()
   @IsString()
   description?: string;
+}
+
+export class SendWorkspaceInviteDto {
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @IsOptional()
+  @IsEnum(['EDITOR', 'VIEWER'], {
+    message: 'role must be either EDITOR or VIEWER',
+  })
+  role?: 'EDITOR' | 'VIEWER';
+}
+
+export class AcceptWorkspaceInviteDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
 }
