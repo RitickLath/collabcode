@@ -58,6 +58,33 @@ export class CreateWorkspaceGitDto {
   description?: string;
 }
 
+export class CreateWorkspaceDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name: string;
+
+  @IsOptional()
+  @IsEnum(['TEMPLATE', 'GIT'], {
+    message: 'type must be either TEMPLATE or GIT',
+  })
+  type?: 'TEMPLATE' | 'GIT';
+
+  @IsOptional()
+  @IsEnum(ProjectTemplate, {
+    message: `framework must be one of: ${Object.values(ProjectTemplate).join(', ')}`,
+  })
+  framework?: ProjectTemplate;
+
+  @IsOptional()
+  @IsString()
+  gitUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
 export class SendWorkspaceInviteDto {
   @IsString()
   @IsNotEmpty()

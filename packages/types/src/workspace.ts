@@ -69,17 +69,25 @@ export interface GetWorkspacesParams {
   search?: string
 }
 
+export type WorkspaceCreationType = "TEMPLATE" | "GIT"
+
 export interface CreateWorkspaceTemplatePayload {
+  type?: "TEMPLATE"
   framework: ProjectTemplate | string
   name: string
   description?: string
 }
 
 export interface CreateWorkspaceGitPayload {
+  type?: "GIT"
   gitUrl: string
   name: string
   description?: string
 }
+
+export type CreateWorkspacePayload =
+  | (CreateWorkspaceTemplatePayload & { type?: "TEMPLATE" })
+  | (CreateWorkspaceGitPayload & { type: "GIT" })
 
 export interface SendWorkspaceInvitePayload {
   email: string

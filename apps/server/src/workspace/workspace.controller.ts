@@ -10,8 +10,7 @@ import {
 import { WorkspaceService } from './workspace.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import {
-  CreateWorkspaceTemplateDto,
-  CreateWorkspaceGitDto,
+  CreateWorkspaceDto,
   GetWorkspacesQueryDto,
   SendWorkspaceInviteDto,
   AcceptWorkspaceInviteDto,
@@ -58,27 +57,15 @@ export class WorkspaceController {
   }
 
   /**
-   * Create a new workspace initialized from a predefined project template
-   * (e.g., React, Node, Python) for the authenticated user.
+   * Create a new workspace.
+   * Dispatches to template or git provisioning based on the provided payload type or fields.
    */
   @Post()
-  async createWithTemplate(
-    @Body() dto: CreateWorkspaceTemplateDto,
+  async createWorkspace(
+    @Body() dto: CreateWorkspaceDto,
     @CurrentUser('sub') userId: string,
   ) {
-    return this.workspaceService.createWithTemplate(dto, userId);
-  }
-
-  /**
-   * Create a new workspace cloned from an external Git repository URL,
-   * setting up the workspace environment for the authenticated user.
-   */
-  @Post('git')
-  async createWithGit(
-    @Body() dto: CreateWorkspaceGitDto,
-    @CurrentUser('sub') userId: string,
-  ) {
-    return this.workspaceService.createWithGit(dto, userId);
+    return this.workspaceService.createWorkspace(dto, userId);
   }
 
   /**

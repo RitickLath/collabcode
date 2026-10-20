@@ -70,8 +70,8 @@ export const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
     }
   }, [open, initialView, initialFramework])
 
-  const { createWithTemplate, createWithGit } = useCreateWorkspaceMutation()
-  const isPending = createWithTemplate.isPending || createWithGit.isPending
+  const { createWorkspace } = useCreateWorkspaceMutation()
+  const isPending = createWorkspace.isPending
 
   const handleClose = () => {
     if (onOpenChange) {
@@ -85,14 +85,16 @@ export const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
 
     try {
       if (view === "template") {
-        await createWithTemplate.mutateAsync({
+        await createWorkspace.mutateAsync({
+          type: "TEMPLATE",
           framework: selectedFramework,
           name: workspaceName.trim(),
           description: description.trim() || undefined,
         })
       } else {
         if (!gitUrl.trim()) return
-        await createWithGit.mutateAsync({
+        await createWorkspace.mutateAsync({
+          type: "GIT",
           gitUrl: gitUrl.trim(),
           name: workspaceName.trim(),
           description: description.trim() || undefined,

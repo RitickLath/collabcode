@@ -3,8 +3,7 @@ import {
   WorkspaceItem,
   PaginatedWorkspacesResponse,
   GetWorkspacesParams,
-  CreateWorkspaceTemplatePayload,
-  CreateWorkspaceGitPayload,
+  CreateWorkspacePayload,
 } from "@/types/workspace"
 
 export const WorkspaceService = {
@@ -84,28 +83,9 @@ export const WorkspaceService = {
   },
 
   /**
-   * Create workspace from template
+   * Unified create workspace (Template or Git)
    */
-  createWithTemplate: async (
-    payload: CreateWorkspaceTemplatePayload
-  ): Promise<any> => {
-    try {
-      const response = await ApiClient.post("/workspace", payload)
-      return response
-    } catch {
-      return await ApiClient.post("/project", payload)
-    }
-  },
-
-  /**
-   * Create workspace by importing git repository
-   */
-  createWithGit: async (payload: CreateWorkspaceGitPayload): Promise<any> => {
-    try {
-      const response = await ApiClient.post("/workspace/git", payload)
-      return response
-    } catch {
-      return await ApiClient.post("/project/git", payload)
-    }
+  createWorkspace: async (payload: CreateWorkspacePayload): Promise<any> => {
+    return ApiClient.post("/workspace", payload)
   },
 }

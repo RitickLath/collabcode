@@ -2,9 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   CreateWorkspaceTemplateDto,
   CreateWorkspaceGitDto,
+  CreateWorkspaceDto,
   GetWorkspacesQueryDto,
   SendWorkspaceInviteDto,
 } from './dto/workspace.dto';
+import { ProjectTemplate } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { getMockWorkspaces } from 'src/common/mock/workspace.mock';
 import { ConfigService } from '@nestjs/config';
@@ -162,6 +164,38 @@ export class WorkspaceService {
     });
 
     return workspace;
+  }
+
+  /**
+   * Unified workspace creation entry point.
+   * Delegates to template or git provisioning based on dto.type or payload shape.
+   */
+  async createWorkspace(dto: CreateWorkspaceDto, userId: string) {
+    if (dto.type === 'GIT' || dto.gitUrl) {
+      if (!dto.gitUrl) {
+        throw new BadRequestException(
+          'gitUrl is required for GIT workspace creation',
+        );
+      }
+      return this.createWithGit(
+        {
+          name: dto.name,
+          gitUrl: dto.gitUrl,
+          description: dto.description,
+        },
+        userId,
+      );
+    }
+
+    // Default to template creation
+    return this.createWithTemplate(
+      {
+        name: dto.name,
+        framework: dto.framework || ProjectTemplate.REACT,
+        description: dto.description,
+      },
+      userId,
+    );
   }
 
   /**
