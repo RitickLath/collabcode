@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { WorkspaceProcessor } from './queue/workspace.processor';
 import { WorkspaceQueue } from './queue/workspace.queue';
+import { WorkspaceWorkerService } from './queue/workspace-worker.service';
 import { WORKSPACE_QUEUE_NAME } from './dto/workspace.types';
 
 @Module({
@@ -17,6 +18,11 @@ import { WORKSPACE_QUEUE_NAME } from './dto/workspace.types';
     }),
   ],
   controllers: [WorkspaceController],
-  providers: [WorkspaceService, WorkspaceQueue, WorkspaceProcessor],
+  providers: [
+    WorkspaceService,
+    WorkspaceQueue,
+    WorkspaceProcessor,
+    WorkspaceWorkerService,
+  ],
 })
 export class WorkspaceModule {}
