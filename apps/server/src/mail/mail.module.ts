@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { MailService } from './mail.service';
-import { MailQueue } from './mail.queue';
-import { MailProcessor } from './mail.processor';
+import { MailQueue } from './queue/mail.queue';
+import { MailProcessor } from './queue/mail.processor';
 import { MAIL_QUEUE_NAME } from './mail.types';
 
 @Module({

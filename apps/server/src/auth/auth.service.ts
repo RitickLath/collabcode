@@ -11,7 +11,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { LoginAuthDto, RegisterAuthDto } from './auth.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { MailQueue } from 'src/mail/mail.queue';
+import { MailQueue } from 'src/mail/queue/mail.queue';
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
 import { BloomFilter } from 'src/common/utils/bloom';
@@ -32,7 +32,10 @@ export class AuthService implements OnModuleInit {
     private jwtService: JwtService,
   ) {}
 
-  // Warm up BloomFilter on application boot (Can be a bottleneck)
+  /**
+   * Application bootstrap hook: populates the Bloom filter with all existing usernames
+   * to ensure O(1) probabilistic username availability checks without database roundtrips.
+   */
   async onModuleInit() {
     try {
       const users = await this.prisma.user.findMany({
@@ -49,7 +52,11 @@ export class AuthService implements OnModuleInit {
     }
   }
 
-  // Bloom filter based check with zero false negatives
+  /**
+   * Checks username availability in a two-tier strategy:
+   * 1. Fast in-memory Bloom filter lookup (0 false negatives).
+   * 2. Candidate confirmation check against PostgreSQL only if the filter returns a positive match.
+   */
   async checkUsernameAvailability(username: string) {
     if (!username) {
       throw new BadRequestException('Username is required');
@@ -72,7 +79,10 @@ export class AuthService implements OnModuleInit {
     return { isAvailable: !user };
   }
 
-  // Verify Email
+  /**
+   * Verifies a user's registered email using a temporary token stored in Redis.
+   * On success, marks the user account as verified and invalidates the Redis token.
+   */
   async verifyEmail(token: string, email: string) {
     if (!token || !email) {
       throw new BadRequestException('Token and email are required');
@@ -125,7 +135,13 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  // Register User
+  /**
+   * Registers a new user account:
+   * 1. Validates unique username and email constraints.
+   * 2. Hashes password using bcrypt.
+   * 3. Creates user record and updates the in-memory Bloom filter.
+   * 4. Enqueues a verification email job via BullMQ (auto-verified in development).
+   */
   async register(body: RegisterAuthDto) {
     const normalizedUsername = body.username.trim().toLowerCase();
     const normalizedEmail = body.email.trim().toLowerCase();
@@ -195,6 +211,10 @@ export class AuthService implements OnModuleInit {
     };
   }
 
+  /**
+   * Authenticates user credentials (by email or username), verifies password and email verification status,
+   * and generates a signed JWT access token.
+   */
   async login(body: LoginAuthDto) {
     const identifier = body.identifier.trim().toLowerCase();
 
@@ -240,12 +260,18 @@ export class AuthService implements OnModuleInit {
     };
   }
 
+  /**
+   * Performs user logout confirmation.
+   */
   async logout() {
     return {
       message: 'Logged out successfully',
     };
   }
 
+  /**
+   * Retrieves profile information and timestamps for the currently authenticated user by ID.
+   */
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

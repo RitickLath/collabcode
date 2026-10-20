@@ -11,7 +11,6 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { FileModule } from './file/file.module';
 import { FolderModule } from './folder/folder.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { InviteModule } from './invite/invite.module';
 import { MailModule } from './mail/mail.module';
 import { RedisModule } from './redis/redis.module';
 import { registerAsDatabaseConfig } from './config/database.config';
@@ -62,7 +61,6 @@ import { registerAsRedisConfig } from './config/redis.config';
     WorkspaceModule,
     FileModule,
     FolderModule,
-    InviteModule,
   ],
   controllers: [AppController],
   providers: [

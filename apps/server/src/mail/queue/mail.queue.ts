@@ -5,7 +5,7 @@ import {
   MAIL_QUEUE_NAME,
   SEND_VERIFICATION_EMAIL_JOB,
   VerificationEmailJobData,
-} from './mail.types';
+} from '../mail.types';
 
 @Injectable()
 export class MailQueue {

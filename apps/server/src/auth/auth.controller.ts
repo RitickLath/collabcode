@@ -9,18 +9,27 @@ import { CurrentUser } from './decorators/current-user.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * Check if a username is available using Bloom filter & database check.
+   */
   @IsPublic()
   @Get('check-username')
   async checkUsername(@Query('username') username: string) {
     return this.authService.checkUsernameAvailability(username);
   }
 
+  /**
+   * Register a new user account and trigger email verification.
+   */
   @IsPublic()
   @Post('register')
   async register(@Body() body: RegisterAuthDto) {
     return this.authService.register(body);
   }
 
+  /**
+   * Verify a user's email address using the token sent via email.
+   */
   @IsPublic()
   @Get('verify-email')
   async verifyEmail(
@@ -30,6 +39,10 @@ export class AuthController {
     return this.authService.verifyEmail(token, email);
   }
 
+  /**
+   * Authenticate a user with email/username and password,
+   * returning user details and setting the access token cookie.
+   */
   @IsPublic()
   @Post('login')
   async login(
@@ -54,6 +67,9 @@ export class AuthController {
     };
   }
 
+  /**
+   * Log out the authenticated user by clearing the access token cookie.
+   */
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
     const isProduction = process.env.NODE_ENV === 'production';
@@ -66,6 +82,9 @@ export class AuthController {
     return this.authService.logout();
   }
 
+  /**
+   * Get the profile details of the currently authenticated user.
+   */
   @Get('me')
   async me(@CurrentUser('sub') userId: string) {
     return this.authService.me(userId);
