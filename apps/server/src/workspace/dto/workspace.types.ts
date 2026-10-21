@@ -2,6 +2,7 @@ export const WORKSPACE_QUEUE_NAME = 'workspace-queue';
 
 export const TEMPLATE_WORKSPACE_JOB = 'template-workspace-job';
 export const GIT_WORKSPACE_JOB = 'git-workspace-job';
+export const S3_CLEANUP_JOB = 's3-cleanup-job';
 
 export interface ITemplateWorkspaceJob {
   workspaceId: string;
@@ -17,6 +18,12 @@ export interface IGitWorkspaceJob {
   userId: string;
   name: string;
   gitUrl: string;
+  s3Bucket: string;
+  s3Prefix: string;
+}
+
+export interface IS3CleanUpJob {
+  workspaceId: string;
   s3Bucket: string;
   s3Prefix: string;
 }

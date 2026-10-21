@@ -4,7 +4,9 @@ import { Queue } from 'bullmq';
 import {
   GIT_WORKSPACE_JOB,
   IGitWorkspaceJob,
+  IS3CleanUpJob,
   ITemplateWorkspaceJob,
+  S3_CLEANUP_JOB,
   TEMPLATE_WORKSPACE_JOB,
   WORKSPACE_QUEUE_NAME,
 } from '../dto/workspace.types';
@@ -29,6 +31,18 @@ export class WorkspaceQueue {
 
   async addGitWorkspaceJob(payload: IGitWorkspaceJob) {
     return this.queue.add(GIT_WORKSPACE_JOB, payload, {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+      removeOnComplete: true,
+      removeOnFail: false,
+    });
+  }
+
+  async addS3CleanUpJob(payload: IS3CleanUpJob) {
+    return this.queue.add(S3_CLEANUP_JOB, payload, {
       attempts: 3,
       backoff: {
         type: 'exponential',

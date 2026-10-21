@@ -4,7 +4,9 @@ import { Job } from 'bullmq';
 import {
   GIT_WORKSPACE_JOB,
   IGitWorkspaceJob,
+  IS3CleanUpJob,
   ITemplateWorkspaceJob,
+  S3_CLEANUP_JOB,
   TEMPLATE_WORKSPACE_JOB,
   WORKSPACE_QUEUE_NAME,
 } from '../dto/workspace.types';
@@ -32,6 +34,12 @@ export class WorkspaceProcessor extends WorkerHost {
         await this.workspaceWorkerService.processGitWorkspace(data);
         break;
       }
+      case S3_CLEANUP_JOB: {
+        const data = job.data as IS3CleanUpJob;
+        await this.workspaceWorkerService.processS3CleanUpJob(data);
+        break;
+      }
+
       default: {
         this.logger.warn(`Unknown job name: ${job.name}`);
       }
