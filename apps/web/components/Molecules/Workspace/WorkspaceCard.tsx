@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import {
   ExternalLink,
@@ -15,9 +15,14 @@ import {
   Bot,
   Code2,
   Layers,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 import { WorkspaceItem } from "@/types/workspace"
 import { useMeQuery } from "@/queries/auth.query"
+import { useDeleteWorkspaceMutation } from "@/queries/workspace.query"
+import { EditWorkspaceModal } from "@/components/Organism/Workspace/EditWorkspaceModal"
+import { Button } from "@workspace/ui/components/atom/button"
 
 interface WorkspaceCardProps {
   project: WorkspaceItem
@@ -84,6 +89,10 @@ const AVATAR_COLORS = [
 
 export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
   const { data: currentUser } = useMeQuery()
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const { deleteWorkspace } = useDeleteWorkspaceMutation()
+
   const targetUrl = `/project/${project.id}`
   const isReady = project.status === "READY"
 
@@ -92,10 +101,23 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
 
   // Check if current user is the owner
   const currentUserId = (currentUser as any)?.id
-  const isOwner = currentUserId && project.ownerId === currentUserId
+  const isOwner = Boolean(currentUserId && project.ownerId === currentUserId)
 
   const ownerName =
     project.owner?.username || project.owner?.email?.split("@")[0] || "Owner"
+
+  const handleDelete = () => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete workspace "${project.name}"? This action cannot be undone.`
+      )
+    ) {
+      setIsDeleting(true)
+      deleteWorkspace.mutate(project.id, {
+        onSettled: () => setIsDeleting(false),
+      })
+    }
+  }
 
   // Members list
   const members = project.members || []
@@ -104,168 +126,212 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
   const extraCount = members.length - maxAvatars
 
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/50 bg-card/40 p-5 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-card/75 hover:shadow-xl hover:shadow-primary/5">
-      {/* Top subtle radial accent */}
-      <div
-        className={`pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br ${fwStyle.gradient} opacity-60 blur-2xl transition-opacity duration-300 group-hover:opacity-100`}
-      />
+    <>
+      <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/50 bg-card/40 p-5 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-card/75 hover:shadow-xl hover:shadow-primary/5">
+        {/* Top subtle radial accent */}
+        <div
+          className={`pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br ${fwStyle.gradient} opacity-60 blur-2xl transition-opacity duration-300 group-hover:opacity-100`}
+        />
 
-      <div>
-        {/* Top Header: Framework icon + Name + Status */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${fwStyle.accent} shadow-xs transition-transform duration-300 group-hover:scale-105`}
-            >
-              <FwIcon className="h-5 w-5" />
-            </div>
+        <div>
+          {/* Top Header: Framework icon + Name + Status */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${fwStyle.accent} shadow-xs transition-transform duration-300 group-hover:scale-105`}
+              >
+                <FwIcon className="h-5 w-5" />
+              </div>
 
-            <div className="min-w-0">
-              {!isReady ? (
-                <span className="line-clamp-1 cursor-not-allowed text-sm font-bold tracking-tight text-foreground/80">
-                  {project.name}
-                </span>
-              ) : (
-                <Link
-                  href={targetUrl}
-                  className="line-clamp-1 text-sm font-bold tracking-tight text-foreground transition hover:text-primary"
-                >
-                  {project.name}
-                </Link>
-              )}
+              <div className="min-w-0">
+                {!isReady ? (
+                  <span className="line-clamp-1 cursor-not-allowed text-sm font-bold tracking-tight text-foreground/80">
+                    {project.name}
+                  </span>
+                ) : (
+                  <Link
+                    href={targetUrl}
+                    className="line-clamp-1 text-sm font-bold tracking-tight text-foreground transition hover:text-primary"
+                  >
+                    {project.name}
+                  </Link>
+                )}
 
-              <div className="mt-0.5 flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  {project.framework}
-                </span>
-                <span className="text-muted-foreground/40">•</span>
-                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <GitBranch className="h-2.5 w-2.5" />
-                  main
-                </span>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                    {project.framework}
+                  </span>
+                  <span className="text-muted-foreground/40">•</span>
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <GitBranch className="h-2.5 w-2.5" />
+                    main
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Status Badge */}
+            <span
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-2xs ${
+                isReady
+                  ? "border border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+                  : "border border-amber-500/25 bg-amber-500/10 text-amber-400"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isReady ? "bg-emerald-400" : "animate-pulse bg-amber-400"
+                }`}
+              />
+              {isReady ? "Ready" : "Provisioning"}
+            </span>
           </div>
 
-          {/* Status Badge */}
-          <span
-            className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-2xs ${
-              isReady
-                ? "border border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
-                : "border border-amber-500/25 bg-amber-500/10 text-amber-400"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                isReady ? "bg-emerald-400" : "animate-pulse bg-amber-400"
-              }`}
-            />
-            {isReady ? "Ready" : "Provisioning"}
-          </span>
+          {/* Description */}
+          <p className="mt-3.5 line-clamp-2 min-h-[2rem] text-xs leading-relaxed text-muted-foreground">
+            {project.description ||
+              (project.gitUrl
+                ? `Cloned from ${project.gitUrl}`
+                : `${project.framework} containerized development environment`)}
+          </p>
+
+          {/* Ownership Pill & Collaborators Row */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/30 pt-3">
+            {/* Owner info */}
+            <div className="flex items-center gap-1.5 text-[11px]">
+              {isOwner ? (
+                <span className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 font-medium text-primary">
+                  <Crown className="h-3 w-3" />
+                  You (Owner)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                  <span className="text-muted-foreground/60">Owner:</span>
+                  <span className="font-medium text-foreground/90">
+                    @{ownerName}
+                  </span>
+                </span>
+              )}
+            </div>
+
+            {/* Members / Collaborators Avatar Stack with Tooltip on Hover */}
+            {members.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="flex -space-x-1.5 overflow-hidden">
+                  {visibleMembers.map((member, idx) => {
+                    const uname =
+                      member.user?.username ||
+                      member.user?.email?.split("@")[0] ||
+                      "dev"
+                    const initial = uname.charAt(0).toUpperCase()
+                    const colorClass = AVATAR_COLORS[idx % AVATAR_COLORS.length]
+
+                    return (
+                      <div
+                        key={member.id || idx}
+                        className="group/avatar relative cursor-default"
+                      >
+                        <div
+                          className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-background text-[10px] font-bold shadow-xs transition-transform hover:z-10 hover:scale-110 ${colorClass}`}
+                        >
+                          {initial}
+                        </div>
+
+                        {/* Tooltip on Hover */}
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 rounded-md border border-border/60 bg-popover px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover/avatar:opacity-100">
+                          @{uname}
+                          <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-popover" />
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Extra count bubble if > 4 members */}
+                  {extraCount > 0 && (
+                    <div
+                      title={`${extraCount} more member${extraCount > 1 ? "s" : ""}`}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-semibold text-muted-foreground shadow-xs"
+                    >
+                      +{extraCount}
+                    </div>
+                  )}
+                </div>
+
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  {members.length} {members.length === 1 ? "dev" : "devs"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Description */}
-        <p className="mt-3.5 line-clamp-2 min-h-[2rem] text-xs leading-relaxed text-muted-foreground">
-          {project.description ||
-            (project.gitUrl
-              ? `Cloned from ${project.gitUrl}`
-              : `${project.framework} containerized development environment`)}
-        </p>
+        {/* Footer bar */}
+        <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-3.5">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Clock className="h-3 w-3 text-muted-foreground/60" />
+            <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+          </div>
 
-        {/* Ownership Pill & Collaborators Row */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/30 pt-3">
-          {/* Owner info */}
-          <div className="flex items-center gap-1.5 text-[11px]">
-            {isOwner ? (
-              <span className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 font-medium text-primary">
-                <Crown className="h-3 w-3" />
-                You (Owner)
-              </span>
+          <div className="flex items-center gap-1.5">
+            {/* Edit / Delete actions for Owner */}
+            {isOwner && (
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => setIsEditOpen(true)}
+                  title="Edit workspace"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  title="Delete workspace"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {isReady ? (
+              <Link
+                href={targetUrl}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 group-hover:shadow-sm hover:bg-primary hover:text-primary-foreground"
+              >
+                <span>Open IDE</span>
+                <ExternalLink className="h-3 w-3" />
+              </Link>
             ) : (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <span className="text-muted-foreground/60">Owner:</span>
-                <span className="font-medium text-foreground/90">
-                  @{ownerName}
-                </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400/90">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Building pod...</span>
               </span>
             )}
           </div>
-
-          {/* Members / Collaborators Avatar Stack with Tooltip on Hover */}
-          {members.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <div className="flex -space-x-1.5 overflow-hidden">
-                {visibleMembers.map((member, idx) => {
-                  const uname =
-                    member.user?.username ||
-                    member.user?.email?.split("@")[0] ||
-                    "dev"
-                  const initial = uname.charAt(0).toUpperCase()
-                  const colorClass = AVATAR_COLORS[idx % AVATAR_COLORS.length]
-
-                  return (
-                    <div
-                      key={member.id || idx}
-                      className="group/avatar relative cursor-default"
-                    >
-                      <div
-                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-background text-[10px] font-bold shadow-xs transition-transform hover:z-10 hover:scale-110 ${colorClass}`}
-                      >
-                        {initial}
-                      </div>
-
-                      {/* Tooltip on Hover */}
-                      <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 rounded-md border border-border/60 bg-popover px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover/avatar:opacity-100">
-                        @{uname}
-                        <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-popover" />
-                      </div>
-                    </div>
-                  )
-                })}
-
-                {/* Extra count bubble if > 4 members */}
-                {extraCount > 0 && (
-                  <div
-                    title={`${extraCount} more member${extraCount > 1 ? "s" : ""}`}
-                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-semibold text-muted-foreground shadow-xs"
-                  >
-                    +{extraCount}
-                  </div>
-                )}
-              </div>
-
-              <span className="text-[10px] font-medium text-muted-foreground">
-                {members.length} {members.length === 1 ? "dev" : "devs"}
-              </span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Footer bar */}
-      <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-3.5">
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Clock className="h-3 w-3 text-muted-foreground/60" />
-          <span>{new Date(project.createdAt).toLocaleDateString()}</span>
-        </div>
-
-        <div>
-          {isReady ? (
-            <Link
-              href={targetUrl}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 group-hover:shadow-sm hover:bg-primary hover:text-primary-foreground"
-            >
-              <span>Open IDE</span>
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400/90">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Building pod...</span>
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+      {/* Edit Workspace Modal */}
+      {isOwner && (
+        <EditWorkspaceModal
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          workspace={{
+            id: project.id,
+            name: project.name,
+            description: project.description,
+          }}
+        />
+      )}
+    </>
   )
 }

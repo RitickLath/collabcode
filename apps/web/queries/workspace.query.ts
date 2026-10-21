@@ -4,6 +4,7 @@ import {
   PaginatedWorkspacesResponse,
   GetWorkspacesParams,
   CreateWorkspacePayload,
+  UpdateWorkspacePayload,
 } from "@/types/workspace"
 import { toast } from "sonner"
 
@@ -43,5 +44,49 @@ export const useCreateWorkspaceMutation = () => {
 
   return {
     createWorkspace,
+  }
+}
+
+export const useDeleteWorkspaceMutation = () => {
+  const queryClient = useQueryClient()
+
+  const deleteWorkspace = useMutation({
+    mutationFn: (id: string) => WorkspaceService.deleteWorkspace(id),
+    onSuccess: () => {
+      toast.success("Workspace deleted successfully")
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to delete workspace")
+    },
+  })
+
+  return {
+    deleteWorkspace,
+  }
+}
+
+export const useUpdateWorkspaceMutation = () => {
+  const queryClient = useQueryClient()
+
+  const updateWorkspace = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string
+      payload: UpdateWorkspacePayload
+    }) => WorkspaceService.updateWorkspace(id, payload),
+    onSuccess: () => {
+      toast.success("Workspace updated successfully")
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to update workspace")
+    },
+  })
+
+  return {
+    updateWorkspace,
   }
 }

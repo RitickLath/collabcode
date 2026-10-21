@@ -36,6 +36,10 @@ export class ApiClient {
     return this.request<T>({ method: "PUT", url, data })
   }
 
+  static async patch<T, D = unknown>(url: string, data?: D): Promise<T> {
+    return this.request<T>({ method: "PATCH", url, data })
+  }
+
   static async delete<T>(
     url: string,
     params?: Record<string, unknown>

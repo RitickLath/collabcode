@@ -4,6 +4,7 @@ import {
   PaginatedWorkspacesResponse,
   GetWorkspacesParams,
   CreateWorkspacePayload,
+  UpdateWorkspacePayload,
 } from "@/types/workspace"
 
 export const WorkspaceService = {
@@ -87,5 +88,22 @@ export const WorkspaceService = {
    */
   createWorkspace: async (payload: CreateWorkspacePayload): Promise<any> => {
     return ApiClient.post("/workspace", payload)
+  },
+
+  /**
+   * Delete workspace
+   */
+  deleteWorkspace: async (id: string): Promise<void> => {
+    return ApiClient.delete(`/workspace/${id}`)
+  },
+
+  /**
+   * Update workspace (name, description, visibility)
+   */
+  updateWorkspace: async (
+    id: string,
+    payload: UpdateWorkspacePayload
+  ): Promise<any> => {
+    return ApiClient.patch(`/workspace/${id}`, payload)
   },
 }
