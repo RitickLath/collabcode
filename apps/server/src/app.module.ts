@@ -8,8 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/guard/authGuard';
 import { UserModule } from './user/user.module';
 import { WorkspaceModule } from './workspace/workspace.module';
-import { FileModule } from './file/file.module';
-import { FolderModule } from './folder/folder.module';
+import { FileExplorerModule } from './file-explorer/file-explorer.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { MailModule } from './mail/mail.module';
 import { RedisModule } from './redis/redis.module';
@@ -59,8 +58,7 @@ import { registerAsRedisConfig } from './config/redis.config';
     AuthModule,
     UserModule,
     WorkspaceModule,
-    FileModule,
-    FolderModule,
+    FileExplorerModule,
   ],
   controllers: [AppController],
   providers: [
