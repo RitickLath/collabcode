@@ -102,3 +102,20 @@ export class AcceptWorkspaceInviteDto {
   @IsNotEmpty()
   token: string;
 }
+
+export class UpdateWorkspaceDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsEnum(['PRIVATE', 'PUBLIC', 'UNLISTED'], {
+    message: 'visibility must be either PRIVATE, PUBLIC, or UNLISTED',
+  })
+  visibility?: 'PRIVATE' | 'PUBLIC' | 'UNLISTED';
+}

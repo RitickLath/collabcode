@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -11,6 +12,7 @@ import { WorkspaceService } from './workspace.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import {
   CreateWorkspaceDto,
+  UpdateWorkspaceDto,
   GetWorkspacesQueryDto,
   SendWorkspaceInviteDto,
   AcceptWorkspaceInviteDto,
@@ -66,6 +68,23 @@ export class WorkspaceController {
     @CurrentUser('sub') userId: string,
   ) {
     return this.workspaceService.createWorkspace(dto, userId);
+  }
+
+  @Patch(':id')
+  async updateWorkspace(
+    @Param('id') id: string,
+    @Body() dto: UpdateWorkspaceDto,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.workspaceService.updateWorkspace(id, dto, userId);
+  }
+
+  @Delete(':id')
+  async deleteWorkspace(
+    @Param('id') id: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.workspaceService.deleteWorkspace(id, userId);
   }
 
   /**

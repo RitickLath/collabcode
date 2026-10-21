@@ -1,8 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CreateWorkspaceTemplateDto,
   CreateWorkspaceGitDto,
   CreateWorkspaceDto,
+  UpdateWorkspaceDto,
   GetWorkspacesQueryDto,
   SendWorkspaceInviteDto,
 } from './dto/workspace.dto';
@@ -12,9 +19,14 @@ import { getMockWorkspaces } from 'src/common/mock/workspace.mock';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'generated/prisma/client';
 import { WorkspaceQueue } from './queue/workspace.queue';
+import { getProjectPath } from 'src/common/utils/projectPath';
+import * as fs from 'fs/promises';
+import { IS3CleanUpJob } from './dto/workspace.types';
 
 @Injectable()
 export class WorkspaceService {
+  private readonly logger = new Logger(WorkspaceService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -260,6 +272,107 @@ export class WorkspaceService {
         description: workspace.description,
       },
     };
+  }
+
+  /**
+   * Deletes a workspace by ID.
+   * Enforces that only the workspace owner can delete it.
+   * Cascades deletion across database relations, cleans up local project files on disk,
+   * and offloads remote S3 asset cleanup to BullMQ.
+   */
+  async deleteWorkspace(workspaceId: string, userId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== userId) {
+      throw new ForbiddenException('Only the owner can delete the workspace');
+    }
+
+    await this.prisma.workspace.delete({
+      where: { id: workspaceId },
+    });
+
+    // Clean up local project files on disk
+    try {
+      const projectDir = getProjectPath(workspaceId);
+      await fs.rm(projectDir, { recursive: true, force: true });
+      this.logger.log(
+        `Cleaned up local directory for workspace: ${workspaceId}`,
+      );
+    } catch (fsError) {
+      this.logger.warn(
+        `Failed to delete local project directory for workspace ${workspaceId}: ${fsError.message}`,
+      );
+    }
+
+    // Offload remote S3 object cleanup to BullMQ
+    await this.workspaceQueue.addS3CleanUpJob({
+      workspaceId,
+      s3Bucket: workspace.s3Bucket,
+      s3Prefix: workspace.s3Prefix,
+    });
+
+    return {
+      message: 'Workspace deleted',
+      data: {
+        id: workspaceId,
+      },
+    };
+  }
+
+  /**
+   * Updates workspace properties (name, description, visibility).
+   * Enforces that only the owner can modify the workspace.
+   */
+  async updateWorkspace(
+    workspaceId: string,
+    dto: UpdateWorkspaceDto,
+    userId: string,
+  ) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== userId) {
+      throw new ForbiddenException('Only the owner can update the workspace');
+    }
+
+    try {
+      const updated = await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: {
+          ...(dto.name && { name: dto.name, slug: dto.name }),
+          ...(dto.description !== undefined && {
+            description: dto.description,
+          }),
+          ...(dto.visibility && { visibility: dto.visibility }),
+        },
+      });
+
+      return {
+        message: 'Workspace updated',
+        data: updated,
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'A workspace with this name already exists for your account',
+        );
+      }
+      throw error;
+    }
   }
 
   /**

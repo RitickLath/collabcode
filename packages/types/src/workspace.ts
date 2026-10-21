@@ -89,6 +89,12 @@ export type CreateWorkspacePayload =
   | (CreateWorkspaceTemplatePayload & { type?: "TEMPLATE" })
   | (CreateWorkspaceGitPayload & { type: "GIT" })
 
+export interface UpdateWorkspacePayload {
+  name?: string
+  description?: string
+  visibility?: WorkspaceVisibility
+}
+
 export interface SendWorkspaceInvitePayload {
   email: string
   role?: "EDITOR" | "VIEWER"
