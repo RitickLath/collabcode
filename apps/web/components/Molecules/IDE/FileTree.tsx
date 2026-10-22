@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React from "react"
 import { FileTreeNodeData } from "@/types/ide"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -7,27 +7,48 @@ import {
   ChevronDown,
 } from "@workspace/ui/components/atom/FileIcon"
 
-interface FileTreeItemProps {
-  child: FileTreeNodeData
-  col: Boolean
+interface FileTreeProps {
+  tree: FileTreeNodeData
+  expandedPaths: Set<string>
+  selectedPath?: string | null
+  onToggleFolder: (path: string) => void
+  onSelectFile?: (path: string) => void
 }
 
-const FileTreeItem: React.FC<FileTreeItemProps> = ({ child, col }) => {
-  const isDirectory = child.type === "directory"
-  const [isExpanded, setIsExpanded] = useState(false)
+interface FileTreeItemProps {
+  child: FileTreeNodeData
+  expandedPaths: Set<string>
+  selectedPath?: string | null
+  onToggleFolder: (path: string) => void
+  onSelectFile?: (path: string) => void
+}
 
-  useEffect(() => {
-    setIsExpanded(false)
-  }, [col])
+const FileTreeItem: React.FC<FileTreeItemProps> = ({
+  child,
+  expandedPaths,
+  selectedPath,
+  onToggleFolder,
+  onSelectFile,
+}) => {
+  const isDirectory = child.type === "directory"
+  const itemPath = child.path || child.name
+  const isExpanded = isDirectory && expandedPaths.has(itemPath)
+  const isSelected = selectedPath === itemPath
 
   return (
     <div>
       <Button
         variant="ghost"
-        className="flex h-7 w-full items-center justify-start gap-1.5 rounded-none px-1 text-xs font-normal hover:bg-muted/50"
+        className={`flex h-7 w-full cursor-pointer items-center justify-start gap-1.5 rounded-none px-1 text-xs font-normal transition-colors ${
+          isSelected
+            ? "bg-primary/15 font-medium text-primary"
+            : "text-foreground/90 hover:bg-muted/50"
+        }`}
         onClick={() => {
           if (isDirectory) {
-            setIsExpanded((prev) => !prev)
+            onToggleFolder(itemPath)
+          } else {
+            onSelectFile?.(itemPath)
           }
         }}
       >
@@ -54,20 +75,37 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ child, col }) => {
       </Button>
 
       {/* Nested children */}
-      {isDirectory && isExpanded && <FileTree col={col} tree={child} />}
+      {isDirectory && isExpanded && (
+        <FileTree
+          tree={child}
+          expandedPaths={expandedPaths}
+          selectedPath={selectedPath}
+          onToggleFolder={onToggleFolder}
+          onSelectFile={onSelectFile}
+        />
+      )}
     </div>
   )
 }
 
-const FileTree = ({ col, tree }: { tree: FileTreeNodeData; col: Boolean }) => {
+const FileTree: React.FC<FileTreeProps> = ({
+  tree,
+  expandedPaths,
+  selectedPath,
+  onToggleFolder,
+  onSelectFile,
+}) => {
   return (
     <div className="w-full">
-      <div className="pl-4">
+      <div className="pl-3.5">
         {tree.children?.map((child) => (
           <FileTreeItem
-            col={col}
             key={child.path || child.name}
             child={child}
+            expandedPaths={expandedPaths}
+            selectedPath={selectedPath}
+            onToggleFolder={onToggleFolder}
+            onSelectFile={onSelectFile}
           />
         ))}
       </div>

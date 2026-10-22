@@ -12,17 +12,17 @@ import { Button } from "@workspace/ui/components/atom/button"
 import { CollapseAllIcon } from "@workspace/ui/components/atom/ExplorerIcons"
 import { FileTreeNodeData } from "@/types/ide"
 import FileTree from "@/components/Molecules/IDE/FileTree"
+import { useExplorer } from "@/store/useExplorer"
+import { FileExplorerService } from "@/services/fileExplorer.service"
+import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 
 interface FileExplorerSidebarProps {
   workspaceName?: string
   tree?: FileTreeNodeData | null
   isLoading?: boolean
   selectedPath?: string | null
-  onSelectFile?: (path: string) => void
   onRefresh?: () => void
-  onCollapseAll?: () => void
-  onCreateFile?: () => void
-  onCreateFolder?: () => void
 }
 
 export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
@@ -30,13 +30,71 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   tree,
   isLoading = false,
   selectedPath,
-  onSelectFile,
   onRefresh,
-  onCollapseAll,
-  onCreateFile,
-  onCreateFolder,
 }) => {
-  const [col, setCol] = useState(false)
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
+
+  const queryClient = useQueryClient()
+
+  const {
+    activeFiles,
+    currentActiveFile,
+    addActiveFile,
+    setCurrentActiveFile,
+  } = useExplorer()
+
+  const handleToggleFolder = (folderPath: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderPath)) {
+        next.delete(folderPath)
+      } else {
+        next.add(folderPath)
+      }
+      return next
+    })
+  }
+
+  const handleCollapseAll = () => {
+    setExpandedPaths(new Set())
+  }
+
+  const onSelectFile = async (filePath: string) => {
+    // 1. Check if already open in tabs
+    const alreadyOpen = activeFiles.find((file) => file.path === filePath)
+    if (alreadyOpen) {
+      setCurrentActiveFile(alreadyOpen)
+      return
+    }
+
+    // 2. Fetch file content, name, and extension directly from server
+    try {
+      const data = await queryClient.ensureQueryData({
+        queryKey: ["file-content", workspaceName, filePath],
+        queryFn: () =>
+          FileExplorerService.getFileContent(workspaceName, filePath),
+        staleTime: 1000 * 60 * 2,
+      })
+
+      addActiveFile({
+        id: filePath,
+        name: data.name,
+        path: filePath,
+        extension: data.extension,
+        content: data.content,
+      })
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to open file")
+    }
+  }
+
+  const onCreateFile = () => {
+    console.log("Create File")
+  }
+
+  const onCreateFolder = () => {
+    console.log("Create Folder")
+  }
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-border/50 bg-card/25 backdrop-blur-xs select-none">
@@ -79,7 +137,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            onClick={() => setCol((prev) => !prev)}
+            onClick={handleCollapseAll}
             title="Collapse Folders in Explorer"
           >
             <CollapseAllIcon size={14} />
@@ -107,8 +165,14 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
           </div>
         ) : (
           <div className="text-left">
-            {/* Real FileTreeNode items will render here */}
-            <FileTree col={col} tree={tree} />
+            {/* Real FileTreeNode items */}
+            <FileTree
+              tree={tree}
+              expandedPaths={expandedPaths}
+              selectedPath={currentActiveFile?.path || selectedPath}
+              onToggleFolder={handleToggleFolder}
+              onSelectFile={onSelectFile}
+            />
           </div>
         )}
       </div>
