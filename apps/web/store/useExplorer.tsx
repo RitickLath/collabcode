@@ -11,6 +11,8 @@ export interface ActiveFile {
 export interface ExplorerStore {
   activeFiles: ActiveFile[]
   currentActiveFile: ActiveFile | null
+  lastActivityPath: string
+  setLastActivityPath: (path: string) => void
   addActiveFile: (newActiveFile: ActiveFile) => void
   removeActiveFile: (id: string | number) => void
   setCurrentActiveFile: (currentActiveFile: ActiveFile | null) => void
@@ -20,6 +22,10 @@ export interface ExplorerStore {
 export const useExplorer = create<ExplorerStore>((set) => ({
   activeFiles: [],
   currentActiveFile: null,
+  // Tracks the most recently clicked directory or tab path to target file/folder creation
+  lastActivityPath: "",
+
+  setLastActivityPath: (lastActivityPath) => set({ lastActivityPath }),
 
   addActiveFile: (newActiveFile) =>
     set((state) => {
@@ -29,11 +35,15 @@ export const useExplorer = create<ExplorerStore>((set) => ({
           file.path === newActiveFile.path || file.id === newActiveFile.id
       )
       if (exists) {
-        return { currentActiveFile: newActiveFile }
+        return {
+          currentActiveFile: newActiveFile,
+          lastActivityPath: newActiveFile.path,
+        }
       }
       return {
         activeFiles: [...state.activeFiles, newActiveFile],
         currentActiveFile: newActiveFile,
+        lastActivityPath: newActiveFile.path,
       }
     }),
 
@@ -48,10 +58,15 @@ export const useExplorer = create<ExplorerStore>((set) => ({
       return {
         activeFiles: remainingFiles,
         currentActiveFile: nextActiveFile,
+        lastActivityPath: nextActiveFile ? nextActiveFile.path : "",
       }
     }),
 
-  setCurrentActiveFile: (currentActiveFile) => set({ currentActiveFile }),
+  setCurrentActiveFile: (currentActiveFile) =>
+    set({
+      currentActiveFile,
+      lastActivityPath: currentActiveFile ? currentActiveFile.path : "",
+    }),
 
   updateActiveFileContent: (path, content) =>
     set((state) => ({
