@@ -16,3 +16,26 @@ export interface FileTreeNodeData {
 }
 
 export type ActivityTab = "files" | "search" | "git" | "settings"
+
+export type EntryType = "FILE" | "DIRECTORY"
+
+export interface CreateEntryPayload {
+  path: string
+  type: EntryType
+  content?: string
+}
+
+export interface UpdateContentPayload {
+  path: string
+  content: string
+}
+
+export interface RenameEntryPayload {
+  path: string
+  newName: string
+}
+
+export interface FileContentResponse {
+  path: string
+  content: string
+}
