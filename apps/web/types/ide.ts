@@ -1,7 +1,7 @@
 export interface IdeTab {
+  id?: string | number
   path: string
   name: string
-  isDirty?: boolean
   content?: string
 }
 
@@ -37,5 +37,7 @@ export interface RenameEntryPayload {
 
 export interface FileContentResponse {
   path: string
+  name: string
+  extension?: string
   content: string
 }
