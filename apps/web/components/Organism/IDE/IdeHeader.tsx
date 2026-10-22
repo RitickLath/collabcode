@@ -4,7 +4,6 @@ import React from "react"
 import Link from "next/link"
 import {
   Code2,
-  GitBranch,
   Play,
   Terminal,
   Share2,
@@ -15,18 +14,12 @@ import { Button } from "@workspace/ui/components/atom/button"
 
 interface IdeHeaderProps {
   workspaceName?: string
-  branchName?: string
-  leftSidebarOpen: boolean
-  onToggleLeftSidebar: () => void
   rightChatOpen: boolean
   onToggleRightChat: () => void
 }
 
 export const IdeHeader: React.FC<IdeHeaderProps> = ({
   workspaceName = "workspace",
-  branchName = "main",
-  leftSidebarOpen,
-  onToggleLeftSidebar,
   rightChatOpen,
   onToggleRightChat,
 }) => {
@@ -49,10 +42,6 @@ export const IdeHeader: React.FC<IdeHeaderProps> = ({
         <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
           <span className="rounded-md bg-muted/60 px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
             {workspaceName}
-          </span>
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <GitBranch className="h-3 w-3" />
-            {branchName}
           </span>
         </div>
       </div>
@@ -87,19 +76,6 @@ export const IdeHeader: React.FC<IdeHeaderProps> = ({
         >
           <Share2 className="h-3 w-3" />
           <span className="hidden sm:inline">Share</span>
-        </Button>
-
-        {/* Toggle Left Explorer */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`h-7 w-7 text-muted-foreground hover:text-foreground ${leftSidebarOpen ? "bg-muted/50" : ""}`}
-          onClick={onToggleLeftSidebar}
-          title="Toggle Left Explorer"
-        >
-          <PanelLeftClose
-            className={`h-3.5 w-3.5 transition-transform ${!leftSidebarOpen ? "rotate-180" : ""}`}
-          />
         </Button>
 
         {/* Toggle AI Copilot */}

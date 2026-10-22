@@ -5,11 +5,13 @@ import { useParams } from "next/navigation"
 import { IdeHeader } from "@/components/Organism/IDE/IdeHeader"
 import { ActivityBar } from "@/components/Organism/IDE/ActivityBar"
 import { FileExplorerSidebar } from "@/components/Organism/IDE/FileExplorerSidebar"
+import { SearchSidebar } from "@/components/Organism/IDE/SearchSidebar"
 import { AiCopilotSidebar } from "@/components/Organism/IDE/AiCopilotSidebar"
 import { IdeStatusBar } from "@/components/Organism/IDE/IdeStatusBar"
 import { ActivityTab } from "@/types/ide"
 import { useGetTreeQuery } from "@/queries/fileExplorer.query"
 import { Group, Panel, Separator } from "react-resizable-panels"
+import { useIdeLayout } from "@/store/useIdeLayout"
 
 export default function ProjectLayout({
   children,
@@ -20,51 +22,60 @@ export default function ProjectLayout({
   const workspaceId = (params?.workspaceId as string) || "workspace"
 
   const [leftNavActive, setLeftNavActive] = useState<ActivityTab>("files")
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
-  const [rightChatOpen, setRightChatOpen] = useState(true)
+
+  const {
+    leftSidebarOpen,
+    rightChatOpen,
+    setLeftSidebarOpen,
+    setRightChatOpen,
+  } = useIdeLayout()
+
   const {
     data: tree,
     isLoading: isTreeLoading,
     refetch: refetchTree,
   } = useGetTreeQuery(workspaceId)
 
-  const handleSelectActivityTab = (tab: ActivityTab) => {
-    setLeftNavActive(tab)
-    setLeftSidebarOpen(true)
-  }
-
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground select-none">
       {/* 1. TOP HEADER / TOOLBAR */}
       <IdeHeader
         workspaceName={workspaceId}
-        branchName="main"
-        leftSidebarOpen={leftSidebarOpen}
-        onToggleLeftSidebar={() => setLeftSidebarOpen((prev) => !prev)}
         rightChatOpen={rightChatOpen}
         onToggleRightChat={() => setRightChatOpen((prev) => !prev)}
       />
 
       {/* 2. MAIN WORKSPACE BODY */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Fixed Leftmost Activity Bar */}
         <ActivityBar
           activeTab={leftNavActive}
-          onSelectTab={handleSelectActivityTab}
+          leftSidebarOpen={leftSidebarOpen}
+          onSelectTab={(tab) => {
+            setLeftNavActive(tab)
+            setLeftSidebarOpen(true)
+          }}
+          onToggleLeftSidebar={() => setLeftSidebarOpen((prev) => !prev)}
         />
 
         {/* Resizable Panels Group (v4 API: Group, Panel, Separator) */}
         <Group orientation="horizontal" className="h-full flex-1">
           {/* Collapsible Left Panel (Explorer / Search / Git / Settings) */}
-          {leftSidebarOpen && leftNavActive === "files" && (
+          {leftSidebarOpen && (
             <>
               <Panel defaultSize="20%" minSize="15%" maxSize="35%">
-                <FileExplorerSidebar
-                  workspaceName={workspaceId}
-                  tree={tree}
-                  isLoading={isTreeLoading}
-                  onRefresh={() => refetchTree()}
-                />
+                {leftNavActive === "files" && (
+                  <FileExplorerSidebar
+                    workspaceName={workspaceId}
+                    tree={tree}
+                    isLoading={isTreeLoading}
+                    onRefresh={() => refetchTree()}
+                  />
+                )}
+                {leftNavActive === "search" && (
+                  <SearchSidebar
+                    onSearch={(q) => console.log("Searching for:", q)}
+                  />
+                )}
               </Panel>
               <Separator className="w-1 cursor-col-resize bg-border/40 transition-colors hover:bg-primary/50" />
             </>
