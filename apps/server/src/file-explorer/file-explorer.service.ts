@@ -68,7 +68,9 @@ export class FileExplorerService {
       }
 
       const content = await fs.readFile(safePath, 'utf-8');
-      return { path: filePath, content };
+      const ext = path.extname(filePath);
+      const name = path.basename(filePath);
+      return { path: filePath, name, extension: ext, content };
     } catch (error) {
       if (error.code === 'ENOENT') {
         throw new NotFoundException(`File not found: ${filePath}`);
