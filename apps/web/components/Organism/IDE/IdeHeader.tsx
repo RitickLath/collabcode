@@ -36,14 +36,6 @@ export const IdeHeader: React.FC<IdeHeaderProps> = ({
           </div>
           <span className="hidden sm:inline">CollabCode</span>
         </Link>
-
-        <span className="text-muted-foreground/40">/</span>
-
-        <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-          <span className="rounded-md bg-muted/60 px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-            {workspaceName}
-          </span>
-        </div>
       </div>
 
       {/* Center: Quick Execution Actions */}

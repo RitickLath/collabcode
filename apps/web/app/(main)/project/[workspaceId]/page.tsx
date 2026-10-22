@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { Terminal, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/atom/button"
 import { EditorTab } from "@/components/Molecules/IDE/EditorTab"
+import { BreadcrumbsBar } from "@/components/Molecules/IDE/BreadcrumbsBar"
 import { TerminalDrawer } from "@/components/Molecules/IDE/TerminalDrawer"
 import { MonacoEditorCanvas } from "@/components/Organism/IDE/MonacoEditorCanvas"
 import { useExplorer } from "@/store/useExplorer"
@@ -82,7 +83,10 @@ export default function ProjectEditorPage() {
         </div>
       </div>
 
-      {/* 2. EDITOR CANVAS */}
+      {/* 2. VS CODE BREADCRUMBS BAR */}
+      <BreadcrumbsBar currentActiveFile={currentActiveFile} />
+
+      {/* 3. EDITOR CANVAS */}
       <div className="relative flex flex-1 overflow-hidden">
         <MonacoEditorCanvas />
       </div>
