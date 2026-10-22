@@ -28,19 +28,15 @@ export const EditorTab: React.FC<EditorTabProps> = ({
     >
       <span className="truncate">{tab.name}</span>
 
-      {tab.isDirty ? (
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-      ) : (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onClose()
-          }}
-          className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      )}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onClose()
+        }}
+        className="hover:text-foreground"
+      >
+        <X className="h-3 w-3" />
+      </button>
     </div>
   )
 }
