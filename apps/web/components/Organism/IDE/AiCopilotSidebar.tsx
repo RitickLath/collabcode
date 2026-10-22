@@ -14,7 +14,7 @@ export const AiCopilotSidebar: React.FC<AiCopilotSidebarProps> = ({
   const [prompt, setPrompt] = useState("")
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-border/50 bg-card/30 backdrop-blur-md select-none">
+    <aside className="flex h-full w-full flex-col border-l border-border/50 bg-card/30 backdrop-blur-md select-none">
       {/* Header */}
       <div className="flex h-9 items-center justify-between border-b border-border/40 px-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
