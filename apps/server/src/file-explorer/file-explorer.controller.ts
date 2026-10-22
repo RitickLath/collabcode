@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -19,7 +20,7 @@ import {
   UpdateContentDto,
 } from './dto/file-explorer.dto';
 
-@Controller('workspaces/:workspaceId/files')
+@Controller('workspaces/:workspaceId')
 export class FileExplorerController {
   constructor(private readonly fileExplorerService: FileExplorerService) {}
 
@@ -28,9 +29,9 @@ export class FileExplorerController {
    * Retrieves the full recursive directory and file hierarchy of the workspace.
    * Filters out high-noise folders (e.g., node_modules, .git, .next, dist).
    */
-  @Get()
+  @Get('file-tree')
   async getFileTree(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @CurrentUser('sub') userId: string,
   ) {
     return this.fileExplorerService.getFileTree(workspaceId, userId);
@@ -40,9 +41,9 @@ export class FileExplorerController {
    * Get File Content
    * Reads and returns the UTF-8 text/code content of a specific file for the editor.
    */
-  @Get('content')
+  @Get('file')
   async getFileContent(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Query() query: GetContentQueryDto,
     @CurrentUser('sub') userId: string,
   ) {
@@ -58,9 +59,9 @@ export class FileExplorerController {
    * Creates a new file or directory at the specified relative workspace path.
    * Recursively ensures parent directories exist and writes initial content if provided.
    */
-  @Post()
+  @Post('entry')
   async createEntry(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Body() dto: CreateEntryDto,
     @CurrentUser('sub') userId: string,
   ) {
@@ -73,7 +74,7 @@ export class FileExplorerController {
    */
   @Put('content')
   async updateFileContent(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Body() dto: UpdateContentDto,
     @CurrentUser('sub') userId: string,
   ) {
@@ -84,9 +85,9 @@ export class FileExplorerController {
    * Rename File/Folder
    * Renames an existing file or directory within the workspace sandbox.
    */
-  @Patch('rename')
+  @Patch('rename-entry')
   async renameEntry(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Body() dto: RenameEntryDto,
     @CurrentUser('sub') userId: string,
   ) {
@@ -97,9 +98,9 @@ export class FileExplorerController {
    * Delete Entry
    * Deletes a specific file or directory (and all its nested contents) recursively.
    */
-  @Delete()
+  @Delete('entry')
   async deleteEntry(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Query() query: DeleteEntryQueryDto,
     @CurrentUser('sub') userId: string,
   ) {

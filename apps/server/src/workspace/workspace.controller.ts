@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -52,7 +53,7 @@ export class WorkspaceController {
    */
   @Get(':id')
   async getWorkspaceById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') userId: string,
   ) {
     return this.workspaceService.getWorkspaceById(id, userId);
@@ -72,7 +73,7 @@ export class WorkspaceController {
 
   @Patch(':id')
   async updateWorkspace(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateWorkspaceDto,
     @CurrentUser('sub') userId: string,
   ) {
@@ -81,7 +82,7 @@ export class WorkspaceController {
 
   @Delete(':id')
   async deleteWorkspace(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('sub') userId: string,
   ) {
     return this.workspaceService.deleteWorkspace(id, userId);
@@ -92,7 +93,7 @@ export class WorkspaceController {
    */
   @Post(':id/invites')
   async sendInvite(
-    @Param('id') workspaceId: string,
+    @Param('id', ParseUUIDPipe) workspaceId: string,
     @Body() dto: SendWorkspaceInviteDto,
     @CurrentUser('sub') userId: string,
   ) {
@@ -104,7 +105,7 @@ export class WorkspaceController {
    */
   @Get(':id/invites')
   async getInvites(
-    @Param('id') workspaceId: string,
+    @Param('id', ParseUUIDPipe) workspaceId: string,
     @CurrentUser('sub') userId: string,
   ) {
     return this.workspaceService.getInvites(workspaceId, userId);
@@ -115,8 +116,8 @@ export class WorkspaceController {
    */
   @Delete(':id/invites/:inviteId')
   async revokeInvite(
-    @Param('id') workspaceId: string,
-    @Param('inviteId') inviteId: string,
+    @Param('id', ParseUUIDPipe) workspaceId: string,
+    @Param('inviteId', ParseUUIDPipe) inviteId: string,
     @CurrentUser('sub') userId: string,
   ) {
     return this.workspaceService.revokeInvite(workspaceId, inviteId, userId);
@@ -127,8 +128,8 @@ export class WorkspaceController {
    */
   @Delete(':id/members/:memberId')
   async removeMember(
-    @Param('id') workspaceId: string,
-    @Param('memberId') memberId: string,
+    @Param('id', ParseUUIDPipe) workspaceId: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
     @CurrentUser('sub') userId: string,
   ) {
     return this.workspaceService.removeMember(workspaceId, memberId, userId);
