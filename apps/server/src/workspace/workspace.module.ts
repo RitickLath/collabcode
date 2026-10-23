@@ -8,11 +8,13 @@ import { WorkspaceProcessor } from './queue/workspace.processor';
 import { WorkspaceQueue } from './queue/workspace.queue';
 import { WorkspaceWorkerService } from './queue/workspace-worker.service';
 import { WORKSPACE_QUEUE_NAME } from './dto/workspace.types';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
+    MailModule,
     BullModule.registerQueue({
       name: WORKSPACE_QUEUE_NAME,
     }),

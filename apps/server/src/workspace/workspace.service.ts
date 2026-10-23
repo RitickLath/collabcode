@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,7 +22,7 @@ import { Prisma } from 'generated/prisma/client';
 import { WorkspaceQueue } from './queue/workspace.queue';
 import { getProjectPath } from 'src/common/utils/projectPath';
 import * as fs from 'fs/promises';
-import { IS3CleanUpJob } from './dto/workspace.types';
+import { MailQueue } from 'src/mail/queue/mail.queue';
 
 @Injectable()
 export class WorkspaceService {
@@ -31,6 +32,7 @@ export class WorkspaceService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly workspaceQueue: WorkspaceQueue,
+    private readonly mailQueue: MailQueue,
   ) {}
 
   /**
@@ -441,10 +443,85 @@ export class WorkspaceService {
   /**
    * Accepts a workspace invitation via token and adds the user as a member.
    */
-  async acceptInvite(token: string, userId: string) {
-    // TODO: Validate token, check expiry, create WorkspaceMember and update invite status
+  async acceptInvite(token: string, acceptorId: string, acceptorEmail: string) {
+    const invite = await this.prisma.workspaceInvite.findUnique({
+      where: {
+        token,
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (!invite || invite.email.toLowerCase() !== acceptorEmail.toLowerCase()) {
+      throw new NotFoundException('Invalid invitation');
+    }
+
+    if (invite.workspace.ownerId === acceptorId) {
+      throw new BadRequestException(
+        'You cannot accept an invite to your own workspace',
+      );
+    }
+
+    if (invite.status === 'ACCEPTED') {
+      throw new BadRequestException('Invite already accepted');
+    }
+
+    if (invite.status === 'CANCELLED') {
+      throw new BadRequestException('Invite has been cancelled');
+    }
+
+    if (invite.status === 'EXPIRED' || new Date() > invite.expiresAt) {
+      if (invite.status !== 'EXPIRED') {
+        await this.prisma.workspaceInvite.update({
+          where: { id: invite.id },
+          data: { status: 'EXPIRED' },
+        });
+      }
+      throw new BadRequestException('Invite has expired');
+    }
+
+    // Atomic transaction: Add member and update invite status
+    await this.prisma.$transaction(async (tx) => {
+      // Check if user is already a member
+      const existingMember = await tx.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId: invite.workspaceId,
+            userId: acceptorId,
+          },
+        },
+      });
+
+      if (!existingMember) {
+        await tx.workspaceMember.create({
+          data: {
+            workspaceId: invite.workspaceId,
+            userId: acceptorId,
+            role: invite.role,
+          },
+        });
+      }
+
+      await tx.workspaceInvite.update({
+        where: {
+          id: invite.id,
+        },
+        data: {
+          status: 'ACCEPTED',
+        },
+      });
+    });
+
     return {
       message: 'Invite accepted successfully',
+      workspaceId: invite.workspaceId,
+      role: invite.role,
     };
   }
 
@@ -456,7 +533,70 @@ export class WorkspaceService {
     dto: SendWorkspaceInviteDto,
     userId: string,
   ) {
-    // TODO: Verify userId is OWNER/EDITOR, create WorkspaceInvite, and dispatch email
+    // 1. Check if user has permission to send invite (Is Owner)
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        members: { where: { user: { email: dto.email } } },
+        invites: { where: { email: dto.email, status: 'PENDING' } },
+        owner: {
+          select: {
+            username: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== userId) {
+      throw new ForbiddenException('Only the owner can send invites');
+    }
+
+    if (workspace.owner.email == dto.email) {
+      throw new BadRequestException(
+        'You cannot invite yourself to the workspace',
+      );
+    }
+
+    if (workspace.members.length > 0) {
+      throw new BadRequestException(
+        'User is already a member of the workspace',
+      );
+    }
+
+    if (workspace.invites.length > 0) {
+      throw new BadRequestException('User is already invited to the workspace');
+    }
+
+    const token = crypto.randomUUID();
+
+    const invite = await this.prisma.workspaceInvite.create({
+      data: {
+        workspaceId,
+        email: dto.email,
+        role: dto.role,
+        token: token,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+      },
+    });
+
+    if (!invite) {
+      throw new InternalServerErrorException('Failed to create invite');
+    }
+
+    // Send mail using bullmq
+    await this.mailQueue.queueInviteEmail(
+      dto.email,
+      token,
+      workspace.name,
+      workspace.owner.username,
+      dto.role || 'VIEWER',
+    );
+
     return {
       message: 'Invite sent successfully',
     };
@@ -466,15 +606,86 @@ export class WorkspaceService {
    * Lists all active/pending invitations for a given workspace.
    */
   async getInvites(workspaceId: string, userId: string) {
-    // TODO: Fetch pending invites for workspace if user is member
-    return [];
+    const workspace = await this.prisma.workspace.findUnique({
+      where: {
+        id: workspaceId,
+      },
+      include: {
+        invites: {
+          where: { status: 'PENDING' },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to view invites of this workspace',
+      );
+    }
+
+    return workspace.invites;
   }
 
   /**
    * Revokes or cancels a pending workspace invitation.
    */
   async revokeInvite(workspaceId: string, inviteId: string, userId: string) {
-    // TODO: Delete or mark invite CANCELLED
+    const invite = await this.prisma.workspaceInvite.findUnique({
+      where: {
+        id: inviteId,
+      },
+      include: {
+        workspace: {
+          select: {
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (invite?.workspace.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to perform this action',
+      );
+    }
+
+    if (!invite) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (invite.workspaceId !== workspaceId) {
+      throw new BadRequestException('Invalid invite');
+    }
+
+    if (
+      invite.status === 'ACCEPTED' ||
+      invite.status === 'CANCELLED' ||
+      invite.status === 'EXPIRED'
+    ) {
+      throw new BadRequestException(
+        `Invite has already been ${invite.status.toLocaleLowerCase()}`,
+      );
+    }
+
+    await this.prisma.workspaceInvite.update({
+      where: {
+        id: inviteId,
+      },
+      data: {
+        status: 'CANCELLED',
+      },
+    });
+
     return {
       message: 'Invite revoked successfully',
     };
@@ -484,7 +695,42 @@ export class WorkspaceService {
    * Removes a member from the workspace.
    */
   async removeMember(workspaceId: string, memberId: string, userId: string) {
-    // TODO: Remove WorkspaceMember record verifying permissions
+    const workspaceMember = await this.prisma.workspaceMember.findUnique({
+      where: {
+        id: memberId,
+        workspaceId: workspaceId,
+      },
+      include: {
+        workspace: {
+          select: {
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (!workspaceMember) {
+      throw new NotFoundException('Member not found');
+    }
+
+    if (workspaceMember?.workspace.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to perform this action',
+      );
+    }
+
+    if (workspaceMember.userId === userId) {
+      throw new BadRequestException(
+        'You cannot remove yourself from the workspace',
+      );
+    }
+
+    await this.prisma.workspaceMember.delete({
+      where: {
+        id: memberId,
+      },
+    });
+
     return {
       message: 'Member removed successfully',
     };

@@ -42,9 +42,14 @@ export class WorkspaceController {
   @Post('invites/accept')
   async acceptInvite(
     @Body() dto: AcceptWorkspaceInviteDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('sub') acceptorId: string,
+    @CurrentUser('email') acceptorEmail: string,
   ) {
-    return this.workspaceService.acceptInvite(dto.token, userId);
+    return this.workspaceService.acceptInvite(
+      dto.token,
+      acceptorId,
+      acceptorEmail,
+    );
   }
 
   /**
