@@ -138,6 +138,29 @@ export class FileExplorerService {
     userId: string,
   ) {
     await this.verifyWorkspaceAccess(workspaceId, userId);
+
+    const projectPath = getProjectPath(workspaceId);
+    const safePath = resolveSafeWorkspacePath(projectPath, dto.path);
+
+    try {
+      const stats = await fs.stat(safePath);
+      if (stats.isDirectory()) {
+        throw new BadRequestException(
+          `Cannot write content: "${dto.path}" is a directory`,
+        );
+      }
+    } catch (error: any) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error.code === 'ENOENT') {
+        throw new NotFoundException(`File not found: ${dto.path}`);
+      }
+      throw error;
+    }
+
+    await fs.writeFile(safePath, dto.content ?? '', 'utf-8');
+
     return { message: 'Content saved', path: dto.path };
   }
 
