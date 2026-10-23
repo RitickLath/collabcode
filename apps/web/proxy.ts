@@ -14,7 +14,8 @@ export async function proxy(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/register")
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/verify-email")
 
   if (isPublic) {
     return NextResponse.next()
@@ -23,6 +24,13 @@ export async function proxy(request: NextRequest) {
   const cookie = request.cookies.get("accessToken")?.value
 
   if (!cookie) {
+    if (pathname.startsWith("/invite")) {
+      const url = new URL("/login", request.url)
+      url.searchParams.set("redirectUrl", pathname + request.nextUrl.search)
+
+      return NextResponse.redirect(url)
+    }
+
     return NextResponse.redirect(new URL("/login", request.url))
   }
 

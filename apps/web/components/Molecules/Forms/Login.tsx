@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, Loader2, ArrowRight, Lock, User } from "lucide-react"
 import { Input } from "@workspace/ui/components/atom/input"
 import { Label } from "@workspace/ui/components/atom/label"
@@ -15,6 +15,9 @@ export default function LoginForm() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get("redirectUrl")
 
   const loginMutation = useLoginMutation()
 
@@ -31,7 +34,7 @@ export default function LoginForm() {
         identifier: identifier.trim().toLowerCase(),
         password,
       })
-      router.push("/")
+      router.push(redirectUrl || "/")
       router.refresh()
     } catch (err: any) {
       const msg =
