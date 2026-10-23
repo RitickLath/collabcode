@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Terminal, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/atom/button"
 import { EditorTab } from "@/components/Molecules/IDE/EditorTab"
@@ -30,15 +30,40 @@ export default function ProjectEditorPage() {
 
   const handleToggleSidebars = () => {
     if (areBothCollapsed) {
-      // Re-open both
       setLeftSidebarOpen(true)
       setRightChatOpen(true)
     } else {
-      // Collapse both
       setLeftSidebarOpen(false)
       setRightChatOpen(false)
     }
   }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Support Command on macOS and Ctrl on Windows/Linux
+      const isMod = e.metaKey || e.ctrlKey
+
+      if (isMod && e.key.toLowerCase() === "b") {
+        e.preventDefault()
+        e.stopPropagation()
+        setLeftSidebarOpen((prev) => !prev)
+      } else if (isMod && (e.key === "`" || e.key === "~")) {
+        e.preventDefault()
+        e.stopPropagation()
+        setTerminalOpen((prev) => !prev)
+      } else if (isMod && e.key.toLowerCase() === "j") {
+        e.preventDefault()
+        e.stopPropagation()
+        setRightChatOpen((prev) => !prev)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true })
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, { capture: true })
+    }
+  }, [setLeftSidebarOpen, setRightChatOpen])
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
