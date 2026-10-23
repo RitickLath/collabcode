@@ -5,15 +5,49 @@ import Editor, { BeforeMount, OnMount } from "@monaco-editor/react"
 import { useExplorer } from "@/store/useExplorer"
 import { Code2 } from "lucide-react"
 import { COLLABCODE_DARK_THEME, getMonacoLanguage } from "@/constants/monaco"
+import { useParams } from "next/navigation"
+import { useUpdateFileContentMutation } from "@/queries/fileExplorer.query"
 
 export const MonacoEditorCanvas: React.FC = () => {
+  const params = useParams()
+  const workspaceId = (params?.workspaceId as string) || ""
   const { currentActiveFile, updateActiveFileContent } = useExplorer()
+  const { updateFileContent } = useUpdateFileContentMutation(workspaceId)
+
+  // Debounced auto-save reference
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   const handleEditorChange = (value: string | undefined) => {
-    if (currentActiveFile) {
-      updateActiveFileContent(currentActiveFile.path, value ?? "")
+    if (!currentActiveFile) return
+
+    const newContent = value ?? ""
+    // 1. Immediately update local Zustand store for instantaneous tab rendering
+    updateActiveFileContent(currentActiveFile.path, newContent)
+
+    // 2. Debounce persisting to backend by 800ms
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
     }
+
+    const targetPath = currentActiveFile.path
+    saveTimeoutRef.current = setTimeout(() => {
+      if (workspaceId && targetPath) {
+        updateFileContent.mutate({
+          path: targetPath,
+          content: newContent,
+        })
+      }
+    }, 800)
   }
+
+  // Clear timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleBeforeMount: BeforeMount = (monaco) => {
     monaco.editor.defineTheme("collabcode-dark", COLLABCODE_DARK_THEME)
