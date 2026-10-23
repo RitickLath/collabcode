@@ -6,6 +6,7 @@ export interface ActiveFile {
   path: string
   content?: string
   extension?: string
+  isLoading?: boolean
 }
 
 export interface ExplorerStore {
@@ -29,13 +30,18 @@ export const useExplorer = create<ExplorerStore>((set) => ({
 
   addActiveFile: (newActiveFile) =>
     set((state) => {
-      // Prevent duplicate tabs by path or id
+      // Prevent duplicate tabs by path or id, update if already open
       const exists = state.activeFiles.some(
         (file) =>
           file.path === newActiveFile.path || file.id === newActiveFile.id
       )
       if (exists) {
         return {
+          activeFiles: state.activeFiles.map((file) =>
+            file.path === newActiveFile.path || file.id === newActiveFile.id
+              ? { ...file, ...newActiveFile }
+              : file
+          ),
           currentActiveFile: newActiveFile,
           lastActivityPath: newActiveFile.path,
         }
@@ -71,11 +77,11 @@ export const useExplorer = create<ExplorerStore>((set) => ({
   updateActiveFileContent: (path, content) =>
     set((state) => ({
       activeFiles: state.activeFiles.map((file) =>
-        file.path === path ? { ...file, content } : file
+        file.path === path ? { ...file, content, isLoading: false } : file
       ),
       currentActiveFile:
         state.currentActiveFile?.path === path
-          ? { ...state.currentActiveFile, content }
+          ? { ...state.currentActiveFile, content, isLoading: false }
           : state.currentActiveFile,
     })),
 }))

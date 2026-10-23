@@ -101,6 +101,26 @@ export const MonacoEditorCanvas: React.FC = () => {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
+      {/* Polished Code Skeleton Loading State */}
+      {currentActiveFile.isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col justify-start gap-2.5 bg-background/95 p-6 backdrop-blur-xs select-none">
+          <div className="flex items-center gap-2">
+            <div className="h-3.5 w-24 animate-pulse rounded bg-muted-foreground/20" />
+            <div className="h-3.5 w-16 animate-pulse rounded bg-muted-foreground/15" />
+          </div>
+          <div className="h-3.5 w-48 animate-pulse rounded bg-muted-foreground/15" />
+          <div className="h-3.5 w-32 animate-pulse rounded bg-muted-foreground/10" />
+          <div className="h-3.5 w-64 animate-pulse rounded bg-muted-foreground/20" />
+          <div className="my-1 h-3.5 w-0" />
+          <div className="flex items-center gap-2 pl-4">
+            <div className="h-3.5 w-36 animate-pulse rounded bg-muted-foreground/15" />
+            <div className="h-3.5 w-20 animate-pulse rounded bg-muted-foreground/10" />
+          </div>
+          <div className="h-3.5 w-52 animate-pulse rounded bg-muted-foreground/15 pl-4" />
+          <div className="h-3.5 w-40 animate-pulse rounded bg-muted-foreground/10 pl-4" />
+        </div>
+      )}
+
       <Editor
         key={currentActiveFile.path}
         path={currentActiveFile.path}

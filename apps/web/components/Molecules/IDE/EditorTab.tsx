@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-import { X } from "lucide-react"
+import { X, Loader2 } from "lucide-react"
 import { IdeTab } from "@/types/ide"
 
 interface EditorTabProps {
@@ -26,6 +25,9 @@ export const EditorTab: React.FC<EditorTabProps> = ({
           : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
       }`}
     >
+      {tab.isLoading && (
+        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+      )}
       <span className="truncate">{tab.name}</span>
 
       <button

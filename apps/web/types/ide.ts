@@ -3,6 +3,8 @@ export interface IdeTab {
   path: string
   name: string
   content?: string
+  extension?: string
+  isLoading?: boolean
 }
 
 export interface FileTreeNodeData {
