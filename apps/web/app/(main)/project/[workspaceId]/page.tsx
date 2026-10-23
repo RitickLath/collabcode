@@ -55,6 +55,10 @@ export default function ProjectEditorPage() {
         e.preventDefault()
         e.stopPropagation()
         setRightChatOpen((prev) => !prev)
+      } else if (isMod && e.key.toLocaleLowerCase() == "w") {
+        e.preventDefault()
+        e.stopPropagation()
+        if (currentActiveFile) removeActiveFile(currentActiveFile.id)
       }
     }
 
