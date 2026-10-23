@@ -3,7 +3,9 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
   MAIL_QUEUE_NAME,
+  MailJobData,
   SEND_VERIFICATION_EMAIL_JOB,
+  SEND_WORKSPACE_INVITE_EMAIL_JOB,
   VerificationEmailJobData,
 } from '../mail.types';
 
@@ -13,7 +15,7 @@ export class MailQueue {
 
   constructor(
     @InjectQueue(MAIL_QUEUE_NAME)
-    private readonly queue: Queue<VerificationEmailJobData>,
+    private readonly queue: Queue<MailJobData>,
   ) {}
 
   async queueVerificationEmail(
@@ -25,6 +27,29 @@ export class MailQueue {
     await this.queue.add(
       SEND_VERIFICATION_EMAIL_JOB,
       { email, token, username },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+  }
+
+  async queueInviteEmail(
+    email: string,
+    token: string,
+    workspaceName: string,
+    inviterName: string,
+    role: string,
+  ): Promise<void> {
+    this.logger.log(`Enqueuing invite email job for ${email}`);
+    await this.queue.add(
+      SEND_WORKSPACE_INVITE_EMAIL_JOB,
+      { email, token, workspaceName, inviterName, role },
       {
         attempts: 3,
         backoff: {
