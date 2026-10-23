@@ -103,3 +103,26 @@ export interface SendWorkspaceInvitePayload {
 export interface AcceptWorkspaceInvitePayload {
   token: string
 }
+
+export interface RejectWorkspaceInvitePayload {
+  token: string
+}
+
+export interface UserPendingInvite {
+  id: string
+  token: string
+  role: WorkspaceRole
+  createdAt: string
+  expiresAt: string
+  workspace: {
+    id: string
+    name: string
+    description?: string | null
+    framework: string
+    inviter: {
+      id: string
+      username: string
+      email: string
+    }
+  }
+}
