@@ -103,6 +103,12 @@ export class AcceptWorkspaceInviteDto {
   token: string;
 }
 
+export class RejectWorkspaceInviteDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+}
+
 export class UpdateWorkspaceDto {
   @IsOptional()
   @IsString()

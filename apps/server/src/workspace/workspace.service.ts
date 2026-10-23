@@ -526,6 +526,92 @@ export class WorkspaceService {
   }
 
   /**
+   * Rejects a pending workspace invitation for the authenticated user.
+   */
+  async rejectInvite(token: string, acceptorEmail: string) {
+    const invite = await this.prisma.workspaceInvite.findUnique({
+      where: { token },
+    });
+
+    if (!invite || invite.email.toLowerCase() !== acceptorEmail.toLowerCase()) {
+      throw new NotFoundException('Invalid invitation');
+    }
+
+    if (invite.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Invite has already been ${invite.status.toLowerCase()}`,
+      );
+    }
+
+    await this.prisma.workspaceInvite.update({
+      where: { id: invite.id },
+      data: { status: 'CANCELLED' },
+    });
+
+    return {
+      message: 'Invite rejected successfully',
+    };
+  }
+
+  /**
+   * Retrieves all active/pending invitations addressed to the current user's email.
+   */
+  async getMyPendingInvites(userEmail: string) {
+    const now = new Date();
+    const invites = await this.prisma.workspaceInvite.findMany({
+      where: {
+        email: {
+          equals: userEmail,
+          mode: 'insensitive',
+        },
+        status: 'PENDING',
+        expiresAt: {
+          gt: now,
+        },
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            framework: true,
+            owner: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return invites.map((invite) => ({
+      id: invite.id,
+      token: invite.token,
+      role: invite.role,
+      createdAt: invite.createdAt,
+      expiresAt: invite.expiresAt,
+      workspace: {
+        id: invite.workspace.id,
+        name: invite.workspace.name,
+        description: invite.workspace.description,
+        framework: invite.workspace.framework,
+        inviter: {
+          id: invite.workspace.owner.id,
+          username: invite.workspace.owner.username,
+          email: invite.workspace.owner.email,
+        },
+      },
+    }));
+  }
+
+  /**
    * Creates a pending invitation and emails the invite link to the recipient.
    */
   async sendInvite(

@@ -68,7 +68,7 @@ export class MailService {
     },
   ) {
     const clientUrl = this.configService.get<string>('CLIENT_URL')!;
-    const inviteLink = `${clientUrl}/invites/accept?token=${params.token}&email=${encodeURIComponent(email)}`;
+    const inviteLink = `${clientUrl}/invite?token=${params.token}&email=${encodeURIComponent(email)}`;
 
     this.logger.log(`Sending workspace invite email to ${email}`);
 

@@ -17,6 +17,7 @@ import {
   GetWorkspacesQueryDto,
   SendWorkspaceInviteDto,
   AcceptWorkspaceInviteDto,
+  RejectWorkspaceInviteDto,
 } from './dto/workspace.dto';
 
 @Controller('workspace')
@@ -36,6 +37,14 @@ export class WorkspaceController {
   }
 
   /**
+   * Retrieve all pending workspace invitations for the authenticated user.
+   */
+  @Get('invites/my-invites')
+  async getMyPendingInvites(@CurrentUser('email') userEmail: string) {
+    return this.workspaceService.getMyPendingInvites(userEmail);
+  }
+
+  /**
    * Accept a workspace invitation using an invitation token.
    * Adds the authenticated user as a member of the workspace.
    */
@@ -50,6 +59,17 @@ export class WorkspaceController {
       acceptorId,
       acceptorEmail,
     );
+  }
+
+  /**
+   * Reject a workspace invitation using an invitation token.
+   */
+  @Post('invites/reject')
+  async rejectInvite(
+    @Body() dto: RejectWorkspaceInviteDto,
+    @CurrentUser('email') acceptorEmail: string,
+  ) {
+    return this.workspaceService.rejectInvite(dto.token, acceptorEmail);
   }
 
   /**

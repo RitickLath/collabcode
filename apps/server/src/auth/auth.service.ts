@@ -90,21 +90,7 @@ export class AuthService implements OnModuleInit {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Fetch token stored in Redis
-    const storedToken = await this.redis.get(`verify:${normalizedEmail}`);
-
-    if (!storedToken) {
-      throw new BadRequestException(
-        'Verification link is invalid or has expired',
-      );
-    }
-
-    // 2. Validate token matches
-    if (storedToken !== token) {
-      throw new BadRequestException('Invalid verification token');
-    }
-
-    // 3. Find user in database
+    // 1. Find user in database
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
@@ -114,11 +100,24 @@ export class AuthService implements OnModuleInit {
     }
 
     if (user.isVerified) {
-      // Clean up Redis token if already verified
       await this.redis.del(`verify:${normalizedEmail}`);
       return {
         message: 'Email is already verified. You can log in.',
       };
+    }
+
+    // 2. Fetch token stored in Redis
+    const storedToken = await this.redis.get(`verify:${normalizedEmail}`);
+
+    if (!storedToken) {
+      throw new BadRequestException(
+        'Verification link is invalid or has expired',
+      );
+    }
+
+    // 3. Validate token matches
+    if (storedToken !== token) {
+      throw new BadRequestException('Invalid verification token');
     }
 
     // 4. Mark user as verified in database
@@ -166,13 +165,13 @@ export class AuthService implements OnModuleInit {
 
     const isDev = this.configService.get('NODE_ENV') === 'development';
 
-    // 3. Create User in database
+    // 3. Create User in database (unverified until email link clicked)
     const user = await this.prisma.user.create({
       data: {
         username: normalizedUsername,
         email: normalizedEmail,
         passwordHash,
-        isVerified: isDev,
+        isVerified: false,
       },
       select: {
         id: true,
@@ -187,26 +186,22 @@ export class AuthService implements OnModuleInit {
     this.bloom.add(user.username);
 
     // 5. Generate verification token and enqueue email via BullMQ
-    if (!isDev) {
-      const verificationToken = crypto.randomUUID();
-      await this.redis.set(
-        `verify:${user.email}`,
-        verificationToken,
-        'EX',
-        60 * 60 * 24, // 24 hours
-      );
+    const verificationToken = crypto.randomUUID();
+    await this.redis.set(
+      `verify:${user.email}`,
+      verificationToken,
+      'EX',
+      60 * 60 * 24, // 24 hours
+    );
 
-      await this.mailQueue.queueVerificationEmail(
-        user.email,
-        verificationToken,
-        user.username,
-      );
-    }
+    await this.mailQueue.queueVerificationEmail(
+      user.email,
+      verificationToken,
+      user.username,
+    );
 
     return {
-      message: isDev
-        ? 'User registered successfully (Auto-verified in dev).'
-        : 'User registered successfully. Please verify your email.',
+      message: 'User registered successfully. Please verify your email.',
       user,
     };
   }
