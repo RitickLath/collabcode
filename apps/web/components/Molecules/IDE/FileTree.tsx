@@ -12,6 +12,12 @@ export interface CreatingEntryState {
   type: "FILE" | "DIRECTORY"
 }
 
+interface InlineEntryInputProps {
+  type: "FILE" | "DIRECTORY"
+  onSubmit: (name: string) => void
+  onCancel: () => void
+}
+
 interface FileTreeProps {
   tree: FileTreeNodeData
   expandedPaths: Set<string>
@@ -105,11 +111,11 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
   )
 }
 
-const InlineEntryInput: React.FC<{
-  type: "FILE" | "DIRECTORY"
-  onSubmit: (name: string) => void
-  onCancel: () => void
-}> = ({ type, onSubmit, onCancel }) => {
+const InlineEntryInput: React.FC<InlineEntryInputProps> = ({
+  type,
+  onSubmit,
+  onCancel,
+}) => {
   const [val, setVal] = React.useState("")
 
   return (

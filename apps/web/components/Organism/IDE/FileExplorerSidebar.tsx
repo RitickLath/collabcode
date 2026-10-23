@@ -11,13 +11,9 @@ import {
 import { Button } from "@workspace/ui/components/atom/button"
 import { CollapseAllIcon } from "@workspace/ui/components/atom/ExplorerIcons"
 import { FileTreeNodeData } from "@/types/ide"
-import FileTree, {
-  CreatingEntryState,
-} from "@/components/Molecules/IDE/FileTree"
+import FileTree from "@/components/Molecules/IDE/FileTree"
 import { useExplorer } from "@/store/useExplorer"
-import { FileExplorerService } from "@/services/fileExplorer.service"
-import { toast } from "sonner"
-import { useQueryClient } from "@tanstack/react-query"
+import useFileTreeOperations from "@/hooks/file-explorer/useFileTreeOperations"
 
 interface FileExplorerSidebarProps {
   workspaceName?: string
@@ -34,164 +30,19 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   selectedPath,
   onRefresh,
 }) => {
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
-
-  const queryClient = useQueryClient()
+  const { currentActiveFile } = useExplorer()
 
   const {
-    activeFiles,
-    currentActiveFile,
-    lastActivityPath,
-    setLastActivityPath,
-    addActiveFile,
-    setCurrentActiveFile,
-  } = useExplorer()
-
-  const handleToggleFolder = (folderPath: string) => {
-    // Record directory click as last activity path
-    setLastActivityPath(folderPath)
-
-    setExpandedPaths((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderPath)) {
-        next.delete(folderPath)
-      } else {
-        next.add(folderPath)
-      }
-      return next
-    })
-  }
-
-  const handleCollapseAll = () => {
-    setExpandedPaths(new Set())
-  }
-
-  const onSelectFile = async (filePath: string) => {
-    // 1. Check if already open in tabs
-    const alreadyOpen = activeFiles.find((file) => file.path === filePath)
-    if (alreadyOpen) {
-      setCurrentActiveFile(alreadyOpen)
-      return
-    }
-
-    // 2. Fetch file content, name, and extension directly from server
-    try {
-      const data = await queryClient.ensureQueryData({
-        queryKey: ["file-content", workspaceName, filePath],
-        queryFn: () =>
-          FileExplorerService.getFileContent(workspaceName, filePath),
-        staleTime: 1000 * 60 * 2,
-      })
-
-      addActiveFile({
-        id: filePath,
-        name: data.name,
-        path: filePath,
-        extension: data.extension,
-        content: data.content,
-      })
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to open file")
-    }
-  }
-
-  const [creatingEntry, setCreatingEntry] = useState<CreatingEntryState | null>(
-    null
-  )
-
-  // Determine target folder path based on lastActivityPath
-  const getTargetDirPath = () => {
-    if (!lastActivityPath) return ""
-
-    const parts = lastActivityPath.split("/").filter(Boolean)
-    // If it's a file (contains an extension), strip the filename to get its directory
-    if (parts.length > 0 && parts[parts.length - 1]?.includes(".")) {
-      parts.pop()
-    }
-    return parts.join("/")
-  }
-
-  // Helper to ensure target folder and all its parent directories are expanded
-  const expandTargetHierarchy = (targetDir: string) => {
-    if (!targetDir) return
-    const segments = targetDir.split("/").filter(Boolean)
-    const pathsToExpand: string[] = []
-
-    let current = ""
-    for (const seg of segments) {
-      // ["folder1", "folder2", "folder3"] => parent of folder3
-      // current = "folder1"
-      // current = "folder1/folder2"
-      // current = "folder1/folder2/folder3"
-      current = current ? `${current}/${seg}` : seg
-      pathsToExpand.push(current)
-    }
-
-    setExpandedPaths((prev) => new Set([...prev, ...pathsToExpand]))
-  }
-
-  const onCreateFile = () => {
-    const parentPath = getTargetDirPath()
-    // If the parent path is empty, it means we are creating the file in the root directory.
-    // In that case, we don't need to expand any hierarchy.
-    // Else we will expand all the parent directories to show the newly created file.
-    expandTargetHierarchy(parentPath)
-    setCreatingEntry({ parentPath, type: "FILE" })
-  }
-
-  const onCreateFolder = () => {
-    const parentPath = getTargetDirPath()
-    expandTargetHierarchy(parentPath)
-    setCreatingEntry({ parentPath, type: "DIRECTORY" })
-  }
-
-  const onSubmitCreateEntry = async (name: string) => {
-    if (!creatingEntry) return
-    const parent = creatingEntry.parentPath
-    const fullPath = parent ? `${parent}/${name}` : name
-    const type = creatingEntry.type
-
-    setCreatingEntry(null)
-
-    try {
-      await FileExplorerService.createEntry(workspaceName, {
-        path: fullPath,
-        type: type,
-        content: type === "FILE" ? "" : undefined,
-      })
-
-      // Invalidate tree cache and trigger refresh
-      await queryClient.invalidateQueries({
-        queryKey: ["file-tree", workspaceName],
-      })
-      onRefresh?.()
-
-      if (type === "FILE") {
-        const ext = fullPath.includes(".")
-          ? `.${fullPath.split(".").pop()}`
-          : ""
-        addActiveFile({
-          id: fullPath,
-          name,
-          path: fullPath,
-          extension: ext,
-          content: "",
-        })
-        toast.success(`Created file ${name}`)
-      } else {
-        setExpandedPaths((prev) => new Set([...prev, fullPath]))
-        toast.success(`Created folder ${name}`)
-      }
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || err?.message || "Failed to create entry"
-      )
-    }
-  }
-
-  const onCancelCreateEntry = () => {
-    setCreatingEntry(null)
-  }
+    expandedPaths,
+    creatingEntry,
+    handleToggleFolder,
+    handleCollapseAll,
+    onSelectFile,
+    onCreateFile,
+    onCreateFolder,
+    onSubmitCreateEntry,
+    onCancelCreateEntry,
+  } = useFileTreeOperations({ workspaceName, onRefresh })
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-border/50 bg-card/25 backdrop-blur-xs select-none">
