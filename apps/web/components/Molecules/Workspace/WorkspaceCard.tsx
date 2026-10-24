@@ -24,6 +24,7 @@ import { useMeQuery } from "@/queries/auth.query"
 import { useDeleteWorkspaceMutation } from "@/queries/workspace.query"
 import { EditWorkspaceModal } from "@/components/Organism/Workspace/EditWorkspaceModal"
 import { WorkspaceInviteModal } from "@/components/Organism/Workspace/WorkspaceInviteModal"
+import { DeleteWorkspaceModal } from "@/components/Organism/Workspace/DeleteWorkspaceModal"
 import { Button } from "@workspace/ui/components/atom/button"
 
 interface WorkspaceCardProps {
@@ -93,6 +94,7 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
   const { data: currentUser } = useMeQuery()
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isInviteOpen, setIsInviteOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const { deleteWorkspace } = useDeleteWorkspaceMutation()
 
@@ -109,17 +111,14 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
   const ownerName =
     project.owner?.username || project.owner?.email?.split("@")[0] || "Owner"
 
-  const handleDelete = () => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete workspace "${project.name}"? This action cannot be undone.`
-      )
-    ) {
-      setIsDeleting(true)
-      deleteWorkspace.mutate(project.id, {
-        onSettled: () => setIsDeleting(false),
-      })
-    }
+  const handleConfirmDelete = (workspaceId: string) => {
+    setIsDeleting(true)
+    deleteWorkspace.mutate(workspaceId, {
+      onSuccess: () => {
+        setIsDeleteOpen(false)
+      },
+      onSettled: () => setIsDeleting(false),
+    })
   }
 
   // Members list
@@ -301,7 +300,7 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
-                  onClick={handleDelete}
+                  onClick={() => setIsDeleteOpen(true)}
                   disabled={isDeleting}
                   title="Delete workspace"
                 >
@@ -342,6 +341,20 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
             name: project.name,
             description: project.description,
           }}
+        />
+      )}
+
+      {/* Delete Workspace Confirmation Modal (GitHub Style) */}
+      {isOwner && (
+        <DeleteWorkspaceModal
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
+          workspace={{
+            id: project.id,
+            name: project.name,
+          }}
+          onConfirmDelete={handleConfirmDelete}
+          isDeleting={isDeleting}
         />
       )}
 
