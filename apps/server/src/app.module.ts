@@ -14,6 +14,7 @@ import { MailModule } from './mail/mail.module';
 import { RedisModule } from './redis/redis.module';
 import { registerAsDatabaseConfig } from './config/database.config';
 import { registerAsRedisConfig } from './config/redis.config';
+import { FileSearchModule } from './file-search/file-search.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { registerAsRedisConfig } from './config/redis.config';
     UserModule,
     WorkspaceModule,
     FileExplorerModule,
+    FileSearchModule,
   ],
   controllers: [AppController],
   providers: [
