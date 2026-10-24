@@ -15,7 +15,11 @@ import {
   RoleFilterOption,
 } from "@/components/Molecules/Workspace/WorkspaceFilterBar"
 import { CreateWorkspaceModal } from "@/components/Organism/Workspace/CreateWorkspaceModal"
-import { useGetWorkspacesQuery } from "@/queries/workspace.query"
+import { PendingInvitesBanner } from "@/components/Molecules/Workspace/PendingInvitesBanner"
+import {
+  useGetWorkspacesQuery,
+  useGetMyPendingInvitesQuery,
+} from "@/queries/workspace.query"
 import { useMeQuery } from "@/queries/auth.query"
 
 const CATEGORIES = ["All", "Fullstack", "Frontend", "Backend", "Git"] as const
@@ -37,6 +41,7 @@ export default function DashboardPage() {
   })
 
   const { data: currentUser } = useMeQuery()
+  const { data: pendingInvites } = useGetMyPendingInvitesQuery()
 
   const workspaces = workspacesResponse?.items || []
   const meta = workspacesResponse?.meta || {
@@ -108,6 +113,11 @@ export default function DashboardPage() {
           displayName={userDisplayName}
           onOpenModal={handleOpenModal}
         />
+
+        {/* Pending Invites Banner */}
+        {pendingInvites && pendingInvites.length > 0 && (
+          <PendingInvitesBanner invites={pendingInvites} />
+        )}
 
         {/* Metrics Grid */}
         <DashboardMetrics
