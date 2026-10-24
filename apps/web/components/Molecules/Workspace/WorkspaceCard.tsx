@@ -17,11 +17,13 @@ import {
   Layers,
   Pencil,
   Trash2,
+  UserPlus,
 } from "lucide-react"
 import { WorkspaceItem } from "@/types/workspace"
 import { useMeQuery } from "@/queries/auth.query"
 import { useDeleteWorkspaceMutation } from "@/queries/workspace.query"
 import { EditWorkspaceModal } from "@/components/Organism/Workspace/EditWorkspaceModal"
+import { WorkspaceInviteModal } from "@/components/Organism/Workspace/WorkspaceInviteModal"
 import { Button } from "@workspace/ui/components/atom/button"
 
 interface WorkspaceCardProps {
@@ -90,6 +92,7 @@ const AVATAR_COLORS = [
 export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
   const { data: currentUser } = useMeQuery()
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const { deleteWorkspace } = useDeleteWorkspaceMutation()
 
@@ -273,9 +276,18 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Edit / Delete actions for Owner */}
+            {/* Edit / Delete / Invite actions for Owner */}
             {isOwner && (
               <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                  onClick={() => setIsInviteOpen(true)}
+                  title="Invite collaborators"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -332,6 +344,17 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ project }) => {
           }}
         />
       )}
+
+      {/* Invite Workspace Modal */}
+      <WorkspaceInviteModal
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        workspaceId={project.id}
+        workspaceName={project.name}
+        members={project.members}
+        ownerId={project.ownerId}
+        currentUserId={currentUserId}
+      />
     </>
   )
 }

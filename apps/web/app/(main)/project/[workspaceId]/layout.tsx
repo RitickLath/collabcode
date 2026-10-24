@@ -10,6 +10,9 @@ import { AiCopilotSidebar } from "@/components/Organism/IDE/AiCopilotSidebar"
 import { IdeStatusBar } from "@/components/Organism/IDE/IdeStatusBar"
 import { ActivityTab } from "@/types/ide"
 import { useGetTreeQuery } from "@/queries/fileExplorer.query"
+import { useGetWorkspaceByIdQuery } from "@/queries/workspace.query"
+import { useMeQuery } from "@/queries/auth.query"
+import { WorkspaceInviteModal } from "@/components/Organism/Workspace/WorkspaceInviteModal"
 import { Group, Panel, Separator } from "react-resizable-panels"
 import { useIdeLayout } from "@/store/useIdeLayout"
 
@@ -22,6 +25,15 @@ export default function ProjectLayout({
   const workspaceId = (params?.workspaceId as string) || "workspace"
 
   const [leftNavActive, setLeftNavActive] = useState<ActivityTab>("files")
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
+
+  const { data: workspace } = useGetWorkspaceByIdQuery(workspaceId)
+  const { data: currentUser } = useMeQuery()
+
+  const currentUserId = (currentUser as any)?.id
+  const isOwner = Boolean(
+    currentUserId && workspace?.ownerId && workspace.ownerId === currentUserId
+  )
 
   const {
     leftSidebarOpen,
@@ -40,9 +52,21 @@ export default function ProjectLayout({
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground select-none">
       {/* 1. TOP HEADER / TOOLBAR */}
       <IdeHeader
-        workspaceName={workspaceId}
+        workspaceName={workspace?.name || workspaceId}
         rightChatOpen={rightChatOpen}
         onToggleRightChat={() => setRightChatOpen((prev) => !prev)}
+        onShare={isOwner ? () => setIsInviteOpen(true) : undefined}
+      />
+
+      {/* Workspace Share/Invite Modal */}
+      <WorkspaceInviteModal
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        workspaceId={workspaceId}
+        workspaceName={workspace?.name || "Workspace"}
+        members={workspace?.members}
+        ownerId={workspace?.ownerId}
+        currentUserId={(currentUser as any)?.id}
       />
 
       {/* 2. MAIN WORKSPACE BODY */}

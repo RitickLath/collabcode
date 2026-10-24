@@ -106,4 +106,68 @@ export const WorkspaceService = {
   ): Promise<any> => {
     return ApiClient.patch(`/workspace/${id}`, payload)
   },
+
+  /**
+   * Get pending invitations for the current user
+   */
+  getMyPendingInvites: async (): Promise<any[]> => {
+    try {
+      const response: any = await ApiClient.get("/workspace/invites/my-invites")
+      return response?.data ?? response ?? []
+    } catch {
+      return []
+    }
+  },
+
+  /**
+   * Accept an invitation using its token
+   */
+  acceptInvite: async (token: string): Promise<any> => {
+    return ApiClient.post("/workspace/invites/accept", { token })
+  },
+
+  /**
+   * Reject an invitation using its token
+   */
+  rejectInvite: async (token: string): Promise<any> => {
+    return ApiClient.post("/workspace/invites/reject", { token })
+  },
+
+  /**
+   * Send an invitation email to a user for a specific workspace
+   */
+  sendInvite: async (
+    workspaceId: string,
+    payload: { email: string; role?: "EDITOR" | "VIEWER" }
+  ): Promise<any> => {
+    return ApiClient.post(`/workspace/${workspaceId}/invites`, payload)
+  },
+
+  /**
+   * Get all active/pending invitations for a workspace (owner only)
+   */
+  getWorkspaceInvites: async (workspaceId: string): Promise<any[]> => {
+    try {
+      const response: any = await ApiClient.get(
+        `/workspace/${workspaceId}/invites`
+      )
+      return response?.data ?? response ?? []
+    } catch {
+      return []
+    }
+  },
+
+  /**
+   * Revoke a pending workspace invitation
+   */
+  revokeInvite: async (workspaceId: string, inviteId: string): Promise<any> => {
+    return ApiClient.delete(`/workspace/${workspaceId}/invites/${inviteId}`)
+  },
+
+  /**
+   * Remove a member from a workspace
+   */
+  removeMember: async (workspaceId: string, memberId: string): Promise<any> => {
+    return ApiClient.delete(`/workspace/${workspaceId}/members/${memberId}`)
+  },
 }
