@@ -44,11 +44,14 @@ export class WorkspaceWorkerService {
       const scaffoldCmd = this.configService.get<string>(envKey);
 
       if (scaffoldCmd) {
-        const { cmd } = resolveCommandPath(scaffoldCmd, data.workspaceId);
+        const { cmd, projectDir: targetDir } = resolveCommandPath(
+          scaffoldCmd,
+          data.workspaceId,
+        );
         this.logger.log(`Executing scaffolding command: ${cmd}`);
 
         const { stdout, stderr } = await execAsync(cmd, {
-          cwd: projectDir,
+          cwd: process.cwd(),
         });
         if (stdout) this.logger.debug(stdout);
         if (stderr) this.logger.warn(stderr);

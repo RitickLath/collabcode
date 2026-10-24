@@ -26,5 +26,11 @@
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true
   },
-  "exclude": ["node_modules", "dist", "code-runner-workspaces"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "code-runner-workspaces",
+    "code-runner-workspaces/**/*"
+  ]
 }

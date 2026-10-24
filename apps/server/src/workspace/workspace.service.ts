@@ -115,18 +115,18 @@ export class WorkspaceService {
       }),
     ]);
 
-    // In non-production environments: return central mock data if database has no records yet
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      (!workspaces || workspaces.length === 0)
-    ) {
-      return getMockWorkspaces(userId, {
-        page,
-        limit,
-        role: query?.role,
-        search: query?.search,
-      });
-    }
+    // // In non-production environments: return central mock data if database has no records yet
+    // if (
+    //   process.env.NODE_ENV !== 'production' &&
+    //   (!workspaces || workspaces.length === 0)
+    // ) {
+    //   return getMockWorkspaces(userId, {
+    //     page,
+    //     limit,
+    //     role: query?.role,
+    //     search: query?.search,
+    //   });
+    // }
 
     const totalPages = Math.ceil(total / limit) || 1;
 
