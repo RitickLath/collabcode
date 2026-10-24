@@ -11,6 +11,8 @@ import {
   Sparkles,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/atom/button"
+import { useParams } from "next/navigation"
+import { WorkspaceOnlineUsers } from "@/components/Molecules/IDE/WorkspaceOnlineUsers"
 
 interface IdeHeaderProps {
   workspaceName?: string
@@ -25,8 +27,11 @@ export const IdeHeader: React.FC<IdeHeaderProps> = ({
   onToggleRightChat,
   onShare,
 }) => {
+  const params = useParams()
+  const workspaceId = (params?.workspaceId as string) || "workspace"
+
   return (
-    <header className="flex h-11 shrink-0 items-center justify-between border-b border-border/50 bg-card/60 px-3 backdrop-blur-md select-none">
+    <header className="relative z-30 flex h-11 shrink-0 items-center justify-between border-b border-border/50 bg-card/60 px-3 backdrop-blur-md select-none">
       {/* Left: Brand + Breadcrumbs */}
       <div className="flex items-center gap-2.5">
         <Link
@@ -61,19 +66,24 @@ export const IdeHeader: React.FC<IdeHeaderProps> = ({
         </Button>
       </div>
 
-      {/* Right: Layout toggles and Share */}
-      <div className="flex items-center gap-1.5">
-        {onShare && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1 px-2 text-xs font-medium hover:bg-primary/10 hover:text-primary"
-            onClick={onShare}
-          >
-            <Share2 className="h-3 w-3" />
-            <span className="hidden sm:inline">Share</span>
-          </Button>
-        )}
+      <div className="flex items-center space-x-4">
+        {/* Center: Live Online Collaborators */}
+        <WorkspaceOnlineUsers workspaceId={workspaceId} />
+
+        {/* Right: Layout toggles and Share */}
+        <div className="flex items-center gap-1.5">
+          {onShare && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 px-2 text-xs font-medium hover:bg-primary/10 hover:text-primary"
+              onClick={onShare}
+            >
+              <Share2 className="h-3 w-3" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
+          )}
+        </div>
 
         {/* Toggle AI Copilot */}
         <Button
