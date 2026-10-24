@@ -15,6 +15,7 @@ import { RedisModule } from './redis/redis.module';
 import { registerAsDatabaseConfig } from './config/database.config';
 import { registerAsRedisConfig } from './config/redis.config';
 import { FileSearchModule } from './file-search/file-search.module';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { FileSearchModule } from './file-search/file-search.module';
     WorkspaceModule,
     FileExplorerModule,
     FileSearchModule,
+    SocketModule,
   ],
   controllers: [AppController],
   providers: [
