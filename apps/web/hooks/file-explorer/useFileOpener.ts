@@ -8,15 +8,20 @@ export function useFileOpener(workspaceName: string) {
   const {
     activeFiles,
     addActiveFile,
-    setCurrentActiveFile,
     updateActiveFileContent,
     removeActiveFile,
   } = useExplorer()
 
-  const onSelectFile = async (filePath: string) => {
+  const onSelectFile = async (
+    filePath: string,
+    focusLine?: number | string
+  ) => {
     const alreadyOpen = activeFiles.find((file) => file.path === filePath)
     if (alreadyOpen) {
-      setCurrentActiveFile(alreadyOpen)
+      addActiveFile({
+        ...alreadyOpen,
+        focusLine: focusLine !== undefined ? String(focusLine) : undefined,
+      })
       return
     }
 
@@ -34,6 +39,7 @@ export function useFileOpener(workspaceName: string) {
       extension: fileExt,
       content: "",
       isLoading: true,
+      focusLine: focusLine !== undefined ? String(focusLine) : undefined,
     })
 
     // 2. Fetch full file content and hydrate buffer

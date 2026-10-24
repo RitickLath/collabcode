@@ -7,12 +7,16 @@ import { Code2 } from "lucide-react"
 import { COLLABCODE_DARK_THEME, getMonacoLanguage } from "@/constants/monaco"
 import { useParams } from "next/navigation"
 import { useUpdateFileContentMutation } from "@/queries/fileExplorer.query"
+import type * as monaco from "monaco-editor"
 
 export const MonacoEditorCanvas: React.FC = () => {
   const params = useParams()
   const workspaceId = (params?.workspaceId as string) || ""
-  const { currentActiveFile, updateActiveFileContent } = useExplorer()
+  const { currentActiveFile, updateActiveFileContent, clearFocusLine } =
+    useExplorer()
   const { updateFileContent } = useUpdateFileContentMutation(workspaceId)
+
+  const editorRef = React.useRef<monaco.editor.IStandaloneCodeEditor>(null)
 
   // Debounced auto-save reference
   const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -54,6 +58,8 @@ export const MonacoEditorCanvas: React.FC = () => {
   }
 
   const handleEditorMount: OnMount = (editor) => {
+    editorRef.current = editor
+
     editor.updateOptions({
       fontFamily:
         "var(--font-mono), 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace",
@@ -81,6 +87,33 @@ export const MonacoEditorCanvas: React.FC = () => {
       renderWhitespace: "selection",
     })
   }
+
+  React.useEffect(() => {
+    if (
+      editorRef.current &&
+      currentActiveFile?.focusLine &&
+      !currentActiveFile.isLoading // Focus only possible when content is loaded
+    ) {
+      const line = Number(currentActiveFile.focusLine)
+      if (!isNaN(line) && line > 0) {
+        requestAnimationFrame(() => {
+          editorRef.current?.setPosition({
+            lineNumber: line,
+            column: 1,
+          })
+          editorRef.current?.revealLineInCenter(line)
+          editorRef.current?.focus()
+        })
+
+        clearFocusLine(currentActiveFile.path)
+      }
+    }
+  }, [
+    currentActiveFile?.path,
+    currentActiveFile?.focusLine,
+    currentActiveFile?.isLoading,
+    currentActiveFile?.content,
+  ])
 
   if (!currentActiveFile) {
     return (

@@ -7,6 +7,7 @@ export interface ActiveFile {
   content?: string
   extension?: string
   isLoading?: boolean
+  focusLine?: string
 }
 
 export interface ExplorerStore {
@@ -18,6 +19,7 @@ export interface ExplorerStore {
   removeActiveFile: (id: string | number) => void
   setCurrentActiveFile: (currentActiveFile: ActiveFile | null) => void
   updateActiveFileContent: (path: string, content: string) => void
+  clearFocusLine: (path: string) => void
 }
 
 export const useExplorer = create<ExplorerStore>((set) => ({
@@ -82,6 +84,17 @@ export const useExplorer = create<ExplorerStore>((set) => ({
       currentActiveFile:
         state.currentActiveFile?.path === path
           ? { ...state.currentActiveFile, content, isLoading: false }
+          : state.currentActiveFile,
+    })),
+
+  clearFocusLine: (path) =>
+    set((state) => ({
+      activeFiles: state.activeFiles.map((file) =>
+        file.path === path ? { ...file, focusLine: undefined } : file
+      ),
+      currentActiveFile:
+        state.currentActiveFile?.path === path
+          ? { ...state.currentActiveFile, focusLine: undefined }
           : state.currentActiveFile,
     })),
 }))
