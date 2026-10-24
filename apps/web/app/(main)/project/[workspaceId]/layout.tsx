@@ -15,6 +15,7 @@ import { useMeQuery } from "@/queries/auth.query"
 import { WorkspaceInviteModal } from "@/components/Organism/Workspace/WorkspaceInviteModal"
 import { Group, Panel, Separator } from "react-resizable-panels"
 import { useIdeLayout } from "@/store/useIdeLayout"
+import useWorkspaceSocket from "@/hooks/common/useWorkspaceSocket"
 
 export default function ProjectLayout({
   children,
@@ -30,10 +31,23 @@ export default function ProjectLayout({
   const { data: workspace } = useGetWorkspaceByIdQuery(workspaceId)
   const { data: currentUser } = useMeQuery()
 
-  const currentUserId = (currentUser as any)?.id
+  const user =
+    (currentUser as any)?.user ||
+    (currentUser as any)?.data?.user ||
+    currentUser
+  const currentUserId = user?.id
+  const currentUsername = user?.username
+
   const isOwner = Boolean(
     currentUserId && workspace?.ownerId && workspace.ownerId === currentUserId
   )
+
+  // workspace socket connection
+  const { isConnected, socket } = useWorkspaceSocket({
+    workspaceId,
+    userId: currentUserId,
+    username: currentUsername || "user",
+  })
 
   const {
     leftSidebarOpen,
