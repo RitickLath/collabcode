@@ -96,9 +96,7 @@ export default function ProjectLayout({
                   />
                 )}
                 {leftNavActive === "search" && (
-                  <SearchSidebar
-                    onSearch={(q) => console.log("Searching for:", q)}
-                  />
+                  <SearchSidebar workspaceId={workspaceId} />
                 )}
               </Panel>
               <Separator className="w-1 cursor-col-resize bg-border/40 transition-colors hover:bg-primary/50" />

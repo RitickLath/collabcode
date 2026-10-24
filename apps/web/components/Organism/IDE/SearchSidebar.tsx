@@ -3,28 +3,45 @@
 import React, { useState } from "react"
 import {
   Search as SearchIcon,
-  CaseSensitive,
-  Regex,
-  WholeWord,
+  FileCode,
+  FileText,
+  Loader2,
   RefreshCw,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/atom/button"
+import { useFileSearchQuery } from "@/queries/fileSearch.query"
+import { useFileOpener } from "@/hooks/file-explorer/useFileOpener"
+import { SearchInputBar } from "@/components/Molecules/IDE/SearchInputBar"
+import { SearchResultsList } from "@/components/Molecules/IDE/SearchResultsList"
+import useDebounce from "@/hooks/common/useDebounce"
 
 interface SearchSidebarProps {
-  onSearch?: (query: string) => void
+  workspaceId: string
 }
 
-export const SearchSidebar: React.FC<SearchSidebarProps> = ({ onSearch }) => {
+export const SearchSidebar: React.FC<SearchSidebarProps> = ({
+  workspaceId,
+}) => {
   const [query, setQuery] = useState("")
   const [matchCase, setMatchCase] = useState(false)
-  const [matchWord, setMatchWord] = useState(false)
-  const [useRegex, setUseRegex] = useState(false)
+  const [searchIn, setSearchIn] = useState<"content" | "filename">("content")
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && query.trim()) {
-      onSearch?.(query)
-    }
-  }
+  const { onSelectFile } = useFileOpener(workspaceId)
+
+  const debouncedQuery = useDebounce({ query })
+
+  // Live auto search
+  const { data, isLoading, refetch, isFetching } = useFileSearchQuery(
+    {
+      workspaceId,
+      keyword: debouncedQuery,
+      searchType: matchCase ? "case-sensitive" : "case-insensitive",
+      searchIn,
+    },
+    { enabled: query.length >= 3 }
+  )
+
+  const results = data?.files || []
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-border/50 bg-card/25 backdrop-blur-xs select-none">
@@ -37,76 +54,93 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({ onSearch }) => {
           variant="ghost"
           size="icon"
           className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          onClick={() => query && onSearch?.(query)}
+          onClick={() => refetch()}
+          disabled={!query.trim() || isFetching}
           title="Refresh Search"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${isFetching ? "animate-spin text-primary" : ""}`}
+          />
         </Button>
       </div>
 
-      {/* Search Input Bar with VS Code Filters */}
-      <div className="p-2">
-        <div className="relative flex items-center rounded border border-border/60 bg-background/50 px-2 focus-within:border-primary/80 focus-within:ring-1 focus-within:ring-primary/40">
-          <SearchIcon className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-          <input
-            type="text"
-            placeholder="Search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="h-7 w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
-          />
-          {/* Quick toggle filters */}
-          <div className="flex items-center gap-0.5 pl-1">
-            <button
-              type="button"
-              onClick={() => setMatchCase((prev) => !prev)}
-              className={`rounded p-0.5 transition-colors ${
-                matchCase
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground/60 hover:text-foreground"
-              }`}
-              title="Match Case (Alt+C)"
-            >
-              <CaseSensitive className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setMatchWord((prev) => !prev)}
-              className={`rounded p-0.5 transition-colors ${
-                matchWord
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground/60 hover:text-foreground"
-              }`}
-              title="Match Whole Word (Alt+W)"
-            >
-              <WholeWord className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setUseRegex((prev) => !prev)}
-              className={`rounded p-0.5 transition-colors ${
-                useRegex
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground/60 hover:text-foreground"
-              }`}
-              title="Use Regular Expression (Alt+R)"
-            >
-              <Regex className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+      {/* Mode Selector */}
+      <div className="flex border-b border-border/40 bg-muted/20 p-1">
+        <button
+          type="button"
+          onClick={() => setSearchIn("content")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded py-1 text-[11px] font-medium transition ${
+            searchIn === "content"
+              ? "bg-background text-foreground shadow-2xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileText className="h-3 w-3" />
+          <span>In Content</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSearchIn("filename")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded py-1 text-[11px] font-medium transition ${
+            searchIn === "filename"
+              ? "bg-background text-foreground shadow-2xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileCode className="h-3 w-3" />
+          <span>Files by Name</span>
+        </button>
       </div>
 
-      {/* Results placeholder */}
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center text-muted-foreground">
-        <SearchIcon className="mb-2 h-7 w-7 stroke-[1.5] text-muted-foreground/40" />
-        <p className="text-[11px] font-medium">
-          {query ? "Press Enter to search" : "No search query entered"}
-        </p>
-        <p className="mt-0.5 text-[10px] text-muted-foreground/60">
-          Find text across all files in workspace
-        </p>
+      {/* Search Input Bar Molecule */}
+      <SearchInputBar
+        query={query}
+        searchIn={searchIn}
+        matchCase={matchCase}
+        onQueryChange={setQuery}
+        onToggleMatchCase={() => setMatchCase((prev) => !prev)}
+        onClear={() => setQuery("")}
+      />
+
+      {/* Results Header Count */}
+      {query.trim() && !isLoading && (
+        <div className="border-b border-border/30 px-3 py-1 text-[10px] text-muted-foreground">
+          {results.length} {results.length === 1 ? "result" : "results"}
+        </div>
+      )}
+
+      {/* Results Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+            <Loader2 className="mb-2 h-6 w-6 animate-spin text-primary" />
+            <span className="text-xs">Searching workspace...</span>
+          </div>
+        ) : !query.trim() ? (
+          <div className="flex flex-col items-center justify-center px-4 py-12 text-center text-muted-foreground">
+            <SearchIcon className="mb-2 h-7 w-7 stroke-[1.5] text-muted-foreground/40" />
+            <p className="text-[11px] font-medium">Type to search</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+              {searchIn === "content"
+                ? "Find text occurrences across your project"
+                : "Quickly locate files by name"}
+            </p>
+          </div>
+        ) : results.length === 0 ? (
+          <div className="flex flex-col items-center justify-center px-4 py-12 text-center text-muted-foreground">
+            <p className="text-xs font-medium">No results found</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+              No matching {searchIn === "content" ? "text" : "files"} found for
+              &ldquo;{query}&rdquo;
+            </p>
+          </div>
+        ) : (
+          <SearchResultsList
+            searchIn={searchIn}
+            results={results}
+            onOpenFile={onSelectFile}
+          />
+        )}
       </div>
     </aside>
   )
