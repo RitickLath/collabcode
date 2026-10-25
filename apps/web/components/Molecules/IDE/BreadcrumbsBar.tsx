@@ -12,7 +12,14 @@ export const BreadcrumbsBar: React.FC<BreadcrumbsBarProps> = ({
 }) => {
   if (!currentActiveFile) return null
 
-  const segments = currentActiveFile.path.split("/").filter(Boolean)
+  const rawSegments = currentActiveFile.path.split("/").filter(Boolean)
+  // If the first segment looks like a UUID (e.g. 8-4-4-4-12 hex chars), strip it from display
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const segments =
+    rawSegments.length > 1 && uuidRegex.test(rawSegments[0] || "")
+      ? rawSegments.slice(1)
+      : rawSegments
 
   return (
     <div className="flex h-6 shrink-0 items-center gap-1 border-b border-border/30 bg-background/50 px-3 font-mono text-[11px] text-muted-foreground select-none">

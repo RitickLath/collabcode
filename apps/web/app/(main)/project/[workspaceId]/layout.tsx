@@ -103,7 +103,8 @@ export default function ProjectLayout({
               <Panel defaultSize="20%" minSize="15%" maxSize="35%">
                 {leftNavActive === "files" && (
                   <FileExplorerSidebar
-                    workspaceName={workspaceId}
+                    workspaceId={workspaceId}
+                    workspaceName={workspace?.name || "Workspace"}
                     tree={tree}
                     isLoading={isTreeLoading}
                     onRefresh={() => refetchTree()}

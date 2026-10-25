@@ -1,6 +1,8 @@
 import { useWorkspaceSocketStore } from "@/store/useWorkspaceSocketStore"
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { io, Socket } from "socket.io-client"
+import { toast } from "sonner"
 
 interface WorkspaceSocketProps {
   workspaceId: string
@@ -15,6 +17,7 @@ export const useWorkspaceSocket = ({
 }: WorkspaceSocketProps) => {
   const [isConnected, setIsConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
+  const queryClient = useQueryClient()
 
   const { setUsers, setUserJoin, setUserLeave } = useWorkspaceSocketStore()
 
@@ -67,6 +70,45 @@ export const useWorkspaceSocket = ({
     socketInstance.on("workspace:sync_users", (data) => {
       console.log(`[Socket] Synced users:`, data.users)
       setUsers(data.users)
+    })
+
+    socketInstance.on("tree:updated", (data) => {
+      console.log(
+        `[Workspace] File tree updated by ${data.byUsername || data.byUser}:`,
+        data
+      )
+      // 1. Invalidate the tree query cache so the UI automatically refreshes
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-tree", workspaceId],
+      })
+
+      // Cleanly format path for human readability (strip workspaceId prefix if present)
+      const cleanPath = (rawPath?: string) => {
+        if (!rawPath) return ""
+        if (rawPath.startsWith(`${workspaceId}/`)) {
+          return rawPath.slice(workspaceId.length + 1)
+        }
+        return rawPath
+      }
+
+      // 2. Show a toast if another collaborator made the change
+      if (data.byUser !== userId) {
+        const author = data.byUsername
+          ? `@${data.byUsername}`
+          : "A collaborator"
+        const friendlyPath = cleanPath(data.path)
+        const friendlyOldPath = cleanPath(data.oldPath)
+
+        if (data.action === "create") {
+          toast.info(`${author} created a file ${friendlyPath}`)
+        } else if (data.action === "delete") {
+          toast.warning(`${author} deleted a file ${friendlyPath}`)
+        } else if (data.action === "rename") {
+          toast.info(`${author} renamed a file`, {
+            description: `${friendlyOldPath} → ${friendlyPath}`,
+          })
+        }
+      }
     })
 
     return () => {

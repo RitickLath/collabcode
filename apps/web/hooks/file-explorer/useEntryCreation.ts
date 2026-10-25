@@ -22,12 +22,18 @@ export function useEntryCreation(
   )
 
   const getTargetDirPath = () => {
-    if (!lastActivityPath) return ""
+    // If no path was clicked yet, default to root workspace folder
+    if (!lastActivityPath) return workspaceName
+
     const parts = lastActivityPath.split("/").filter(Boolean)
-    if (parts.length > 0 && parts[parts.length - 1]?.includes(".")) {
-      parts.pop()
-    }
-    return parts.join("/")
+    // If lastActivityPath is already the workspace root, stay at root
+    if (parts.length <= 1) return workspaceName
+
+    // If the last segment is a file (has an extension, or has more than 1 segment), pop the filename to get parent folder
+    parts.pop()
+
+    const resolved = parts.join("/")
+    return resolved || workspaceName
   }
 
   const expandTargetHierarchy = (targetDir: string) => {
@@ -70,7 +76,7 @@ export function useEntryCreation(
       })
 
       await queryClient.invalidateQueries({
-        queryKey: ["file-tree", workspaceName],
+        queryKey: ["workspace-tree", workspaceName],
       })
       onRefresh?.()
 

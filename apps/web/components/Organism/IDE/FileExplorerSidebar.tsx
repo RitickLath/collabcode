@@ -16,6 +16,7 @@ import { useExplorer } from "@/store/useExplorer"
 import useFileTreeOperations from "@/hooks/file-explorer/useFileTreeOperations"
 
 interface FileExplorerSidebarProps {
+  workspaceId: string
   workspaceName?: string
   tree?: FileTreeNodeData | null
   isLoading?: boolean
@@ -24,6 +25,7 @@ interface FileExplorerSidebarProps {
 }
 
 export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
+  workspaceId,
   workspaceName = "WORKSPACE",
   tree,
   isLoading = false,
@@ -42,7 +44,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
     onCreateFolder,
     onSubmitCreateEntry,
     onCancelCreateEntry,
-  } = useFileTreeOperations({ workspaceName, onRefresh })
+  } = useFileTreeOperations({ workspaceName: workspaceId, onRefresh })
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-border/50 bg-card/25 backdrop-blur-xs select-none">
