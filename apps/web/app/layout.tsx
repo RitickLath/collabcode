@@ -4,7 +4,7 @@ import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils"
 import { Providers } from "@/components/query-provider"
-import { Toaster } from "sonner"
+import { Toaster } from "@workspace/ui/components/atom/sonner"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -33,7 +33,7 @@ export default function RootLayout({
         <Providers>
           <ThemeProvider>
             {children}
-            <Toaster richColors position="top-right" />
+            <Toaster position="top-right" />
           </ThemeProvider>
         </Providers>
       </body>
