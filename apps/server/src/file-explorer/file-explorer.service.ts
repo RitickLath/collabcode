@@ -16,12 +16,16 @@ import { getProjectPath } from 'src/common/utils/projectPath';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { resolveSafeWorkspacePath } from './utils/path-security.util';
+import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Injectable()
 export class FileExplorerService {
   private readonly logger = new Logger(FileExplorerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly socketGateway: SocketGateway,
+  ) {}
 
   /**
    * Retrieves the workspace directory tree, filtering out build/git folders.
@@ -83,7 +87,12 @@ export class FileExplorerService {
    * Create Entry
    * Creates a file or directory at the requested relative path.
    */
-  async createEntry(workspaceId: string, dto: CreateEntryDto, userId: string) {
+  async createEntry(
+    workspaceId: string,
+    dto: CreateEntryDto,
+    userId: string,
+    username: string,
+  ) {
     await this.verifyWorkspaceAccess(workspaceId, userId);
 
     const projectPath = getProjectPath(workspaceId);
@@ -121,8 +130,26 @@ export class FileExplorerService {
 
     if (dto.type === 'DIRECTORY') {
       await fs.mkdir(safePath);
+      this.socketGateway.server
+        .to(`workspace:${workspaceId}`)
+        .emit('tree:updated', {
+          action: 'create',
+          path: dto.path,
+          byUser: userId,
+          byUsername: username,
+          timeStamp: Date.now(),
+        });
     } else {
       await fs.writeFile(safePath, dto.content || '', 'utf-8');
+      this.socketGateway.server
+        .to(`workspace:${workspaceId}`)
+        .emit('tree:updated', {
+          action: 'create',
+          path: dto.path,
+          byUser: userId,
+          byUsername: username,
+          timeStamp: Date.now(),
+        });
     }
 
     return { message: 'Entry created', path: dto.path };
@@ -168,7 +195,12 @@ export class FileExplorerService {
    * Rename File/Folder
    * Renames an existing file or directory strictly within its current parent folder.
    */
-  async renameEntry(workspaceId: string, dto: RenameEntryDto, userId: string) {
+  async renameEntry(
+    workspaceId: string,
+    dto: RenameEntryDto,
+    userId: string,
+    username: string,
+  ) {
     await this.verifyWorkspaceAccess(workspaceId, userId);
 
     const projectPath = getProjectPath(workspaceId);
@@ -193,6 +225,17 @@ export class FileExplorerService {
 
       await fs.rename(safeOldPath, safeNewPath);
 
+      this.socketGateway.server
+        .to(`workspace:${workspaceId}`)
+        .emit('tree:updated', {
+          action: 'rename',
+          path: newRelativePath,
+          oldPath: dto.path,
+          byUser: userId,
+          byUsername: username,
+          timeStamp: Date.now(),
+        });
+
       return {
         message: 'Renamed successfully',
         oldPath: dto.path,
@@ -210,7 +253,12 @@ export class FileExplorerService {
    * Delete Entry
    * Deletes a file or directory safely and recursively.
    */
-  async deleteEntry(workspaceId: string, entryPath: string, userId: string) {
+  async deleteEntry(
+    workspaceId: string,
+    entryPath: string,
+    userId: string,
+    username: string,
+  ) {
     await this.verifyWorkspaceAccess(workspaceId, userId);
 
     const projectPath = getProjectPath(workspaceId);
@@ -226,6 +274,16 @@ export class FileExplorerService {
     try {
       await fs.stat(safePath);
       await fs.rm(safePath, { recursive: true, force: true });
+
+      this.socketGateway.server
+        .to(`workspace:${workspaceId}`)
+        .emit('tree:updated', {
+          action: 'delete',
+          path: entryPath,
+          byUser: userId,
+          byUsername: username,
+          timeStamp: Date.now(),
+        });
 
       return { message: 'Entry deleted', path: entryPath };
     } catch (error) {

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileExplorerService } from './file-explorer.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import type { CurrentUserPayload } from 'src/auth/decorators/current-user.decorator';
 import {
   CreateEntryDto,
   DeleteEntryQueryDto,
@@ -63,9 +64,14 @@ export class FileExplorerController {
   async createEntry(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Body() dto: CreateEntryDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.fileExplorerService.createEntry(workspaceId, dto, userId);
+    return this.fileExplorerService.createEntry(
+      workspaceId,
+      dto,
+      user.sub,
+      user.username,
+    );
   }
 
   /**
@@ -89,9 +95,14 @@ export class FileExplorerController {
   async renameEntry(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Body() dto: RenameEntryDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.fileExplorerService.renameEntry(workspaceId, dto, userId);
+    return this.fileExplorerService.renameEntry(
+      workspaceId,
+      dto,
+      user.sub,
+      user.username,
+    );
   }
 
   /**
@@ -102,12 +113,13 @@ export class FileExplorerController {
   async deleteEntry(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Query() query: DeleteEntryQueryDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.fileExplorerService.deleteEntry(
       workspaceId,
       query.path,
-      userId,
+      user.sub,
+      user.username,
     );
   }
 }
