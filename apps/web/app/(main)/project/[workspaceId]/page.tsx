@@ -1,16 +1,29 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Terminal, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/atom/button"
 import { EditorTab } from "@/components/Molecules/IDE/EditorTab"
 import { BreadcrumbsBar } from "@/components/Molecules/IDE/BreadcrumbsBar"
 import { TerminalDrawer } from "@/components/Molecules/IDE/TerminalDrawer"
 import { MonacoEditorCanvas } from "@/components/Organism/IDE/MonacoEditorCanvas"
+import { SandboxStatusOverlay } from "@/components/Molecules/IDE/SandboxStatusOverlay"
 import { useExplorer } from "@/store/useExplorer"
 import { useIdeLayout } from "@/store/useIdeLayout"
+import { useInitContainer } from "@/queries/docker.query"
 
 export default function ProjectEditorPage() {
+  const params = useParams()
+  const workspaceId = params?.workspaceId as string
+  const {
+    mutate: initContainer,
+    isPending: isBootingContainer,
+    isError,
+    isSuccess,
+    error,
+  } = useInitContainer()
+
   const {
     activeFiles,
     currentActiveFile,
@@ -25,6 +38,13 @@ export default function ProjectEditorPage() {
     setLeftSidebarOpen,
     setRightChatOpen,
   } = useIdeLayout()
+
+  // Initialize or verify the workspace container on mount
+  useEffect(() => {
+    if (workspaceId) {
+      initContainer(workspaceId)
+    }
+  }, [workspaceId, initContainer])
 
   const areBothCollapsed = !leftSidebarOpen && !rightChatOpen
 
@@ -68,6 +88,24 @@ export default function ProjectEditorPage() {
       window.removeEventListener("keydown", handleKeyDown, { capture: true })
     }
   }, [setLeftSidebarOpen, setRightChatOpen])
+
+  // 1. Show sleek loading screen while container is being spun up / mounted
+  if (isBootingContainer || (!isSuccess && !isError)) {
+    return <SandboxStatusOverlay status="loading" workspaceName={workspaceId} />
+  }
+
+  // 2. Show clear error overlay with retry button if Docker container boot failed
+  if (isError) {
+    return (
+      <SandboxStatusOverlay
+        status="error"
+        errorMessage={
+          (error as any)?.response?.data?.message || (error as any)?.message
+        }
+        onRetry={() => initContainer(workspaceId)}
+      />
+    )
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
