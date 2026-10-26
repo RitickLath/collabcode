@@ -16,6 +16,7 @@ import { registerAsDatabaseConfig } from './config/database.config';
 import { registerAsRedisConfig } from './config/redis.config';
 import { FileSearchModule } from './file-search/file-search.module';
 import { SocketModule } from './socket/socket.module';
+import { DockerModule } from './docker/docker.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { SocketModule } from './socket/socket.module';
     FileExplorerModule,
     FileSearchModule,
     SocketModule,
+    DockerModule,
   ],
   controllers: [AppController],
   providers: [
