@@ -59,6 +59,13 @@ enum ProjectTemplate {
   TURBOREPO
 }
 
+enum ContainerStatus {
+  STARTING
+  RUNNING
+  STOPPED
+  FAILED
+}
+
 // =========================================
 // CORE USERS
 // =========================================
@@ -72,6 +79,7 @@ model User {
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
+  startedContainers    WorkspaceContainer[]
   ownedWorkspaces      Workspace[]
   workspaceMemberships WorkspaceMember[]
   workspaceSessions    WorkspaceSession[]
@@ -91,6 +99,8 @@ model Workspace {
   gitUrl      String?
   visibility  WorkspaceVisibility @default(PRIVATE)
   status      WorkspaceStatus     @default(CREATING)
+
+  container   WorkspaceContainer?
 
   // S3 backup and persistence tracking
   s3Bucket     String @db.VarChar(100)
@@ -187,3 +197,22 @@ model WorkspaceSession {
 
   @@index([workspaceId, status])
 }
+
+model WorkspaceContainer {
+  id            String          @id @default(uuid()) @db.Uuid
+  containerId   String          @unique
+  containerName String          // e.g. collabcode-runner-{workspaceId}
+  workspaceId   String          @unique @db.Uuid
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  userId        String          @db.Uuid
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  image         String          // e.g. "node:20-alpine"
+  status        ContainerStatus @default(STARTING)
+  lastActiveAt  DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+
