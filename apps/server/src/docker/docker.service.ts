@@ -8,11 +8,18 @@ import {
 import path from 'path';
 import { getProjectPath } from 'src/common/utils/projectPath';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Duplex } from 'stream';
 
 @Injectable()
 export class DockerService {
   private readonly logger = new Logger(DockerService.name);
   docker: Docker;
+  private terminalStreams = new Map<string, Duplex>();
+
+  // Store terminal history per workspace
+  private terminalHistories = new Map<string, string>();
+  // Limit history size to e.g. 50KB to prevent memory leaks
+  private readonly MAX_HISTORY_LENGTH = 50000;
 
   constructor(private prisma: PrismaService) {
     this.docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -251,14 +258,82 @@ export class DockerService {
     });
   }
 
-  /**
-   * Create an interactive TTY exec instance inside the workspace container
-   * (Used by DockerGateway / terminal socket)
-   */
+  getTerminalHistory(workspaceId: string): string {
+    return this.terminalHistories.get(workspaceId) || '';
+  }
+
   async createTerminalExec(
     workspaceId: string,
-    options?: { cols?: number; rows?: number; cmd?: string[] },
+    onOutput: (chunk: string) => void,
   ) {
-    // TODO: container.exec({ AttachStdin: true, AttachStdout: true, Tty: true, ... })
+    // If a stream already exists for this workspace, don't create a new one.
+    if (this.terminalStreams.has(workspaceId)) {
+      return;
+    }
+
+    try {
+      const container = this.docker.getContainer(
+        `collabcode-runner-${workspaceId}`,
+      );
+
+      await container.inspect();
+
+      // 1. Create an exec instance
+      const execInstance = await container.exec({
+        AttachStdin: true,
+        AttachStdout: true,
+        Tty: true,
+        Cmd: ['/bin/sh'],
+      });
+
+      // 2. Attach a Duplex stream to the exec instance
+      const stream: Duplex = await execInstance.start({
+        hijack: true,
+        stdin: true,
+        Tty: true,
+      });
+
+      // 3. Save the Duplex stream in our map
+      this.terminalStreams.set(workspaceId, stream);
+
+      // 4. Handle incoming data from the container & forward it to the client
+      stream.on('data', (chunk: Buffer) => {
+        // Accumulate history with a max cap
+        const text = chunk.toString('utf-8');
+
+        const currentHistory = this.terminalHistories.get(workspaceId) || '';
+        const updatedHistory = (currentHistory + text).slice(
+          -this.MAX_HISTORY_LENGTH,
+        );
+        this.terminalHistories.set(workspaceId, updatedHistory);
+
+        onOutput(text);
+      });
+
+      // 5. Handle stream-end / container-disconnect
+      stream.on('close', () => {
+        this.logger.log(
+          `[Terminal] Stream closed for workspace ${workspaceId}`,
+        );
+        this.terminalStreams.delete(workspaceId);
+        this.terminalHistories.delete(workspaceId);
+      });
+
+      // 6. Handle any other errors
+      stream.on('error', (err: Error) => {
+        this.logger.error(
+          `[Terminal] Stream error for workspace ${workspaceId}:`,
+          err,
+        );
+        this.terminalStreams.delete(workspaceId);
+        this.terminalHistories.delete(workspaceId);
+      });
+    } catch (error) {
+      console.log({ error });
+    }
+  }
+
+  async writeToTerminal(workspaceId: string, data: string) {
+    this.terminalStreams.get(workspaceId)?.write(data);
   }
 }

@@ -36,12 +36,6 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('message')
-  handleMessage(client: Socket, payload: string): string {
-    return 'Hello world!';
-  }
-
-  //
   @SubscribeMessage('workspace:join')
   async handleJoinWorkspace(
     @ConnectedSocket() client: Socket,
