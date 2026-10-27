@@ -3,14 +3,17 @@
 import React, { useState } from "react"
 import { X, Terminal as TerminalIcon } from "lucide-react"
 import { Button } from "@workspace/ui/components/atom/button"
+import TerminalView from "@/components/Molecules/Terminal/TerminalView"
 
 interface TerminalDrawerProps {
   isOpen: boolean
+  workspaceId: string
   onClose: () => void
 }
 
 export const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   isOpen,
+  workspaceId,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<"terminal" | "output" | "ports">(
@@ -69,14 +72,18 @@ export const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
       </div>
 
       {/* Terminal View Area */}
-      <div className="flex-1 overflow-y-auto p-2 font-mono text-[11px] leading-5 text-zinc-300">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <TerminalIcon className="h-3 w-3" />
-          <span>
-            Interactive terminal ready. Commands will execute in workspace
-            container.
-          </span>
-        </div>
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "terminal" && <TerminalView workspaceId={workspaceId} />}
+        {activeTab === "output" && (
+          <div className="p-2 font-mono text-[11px] leading-5 text-zinc-400">
+            No active build output.
+          </div>
+        )}
+        {activeTab === "ports" && (
+          <div className="p-2 font-mono text-[11px] leading-5 text-zinc-400">
+            No forwarded ports currently detected.
+          </div>
+        )}
       </div>
     </div>
   )

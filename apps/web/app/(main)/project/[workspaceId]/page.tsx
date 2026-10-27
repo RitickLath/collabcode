@@ -161,6 +161,7 @@ export default function ProjectEditorPage() {
       {/* 3. BOTTOM TERMINAL DRAWER */}
       <TerminalDrawer
         isOpen={terminalOpen}
+        workspaceId={workspaceId}
         onClose={() => setTerminalOpen(false)}
       />
     </div>
