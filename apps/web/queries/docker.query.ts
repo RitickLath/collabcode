@@ -7,6 +7,8 @@ import {
 export const DOCKER_QUERY_KEYS = {
   containerStatus: (workspaceId: string) =>
     ["docker", "status", workspaceId] as const,
+  workspacePorts: (workspaceId: string) =>
+    ["docker", "ports", workspaceId] as const,
 }
 
 /**
@@ -24,6 +26,18 @@ export const useInitContainer = () => {
         data
       )
     },
+  })
+}
+
+/**
+ * Query hook to fetch mapped host ports for live web preview
+ */
+export const useWorkspacePorts = (workspaceId: string, enabled = true) => {
+  return useQuery({
+    queryKey: DOCKER_QUERY_KEYS.workspacePorts(workspaceId),
+    queryFn: () => DockerService.getWorkspacePorts(workspaceId),
+    enabled: !!workspaceId && enabled,
+    staleTime: 1000 * 60, // Cached for 1 min
   })
 }
 

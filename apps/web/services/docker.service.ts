@@ -39,6 +39,16 @@ export const DockerService = {
   },
 
   /**
+   * Get forwarded ports and host URLs for a running container
+   */
+  getWorkspacePorts: async (workspaceId: string) => {
+    const res: any = await ApiClient.get(
+      `/docker/workspaces/${workspaceId}/ports`
+    )
+    return res?.data ?? res
+  },
+
+  /**
    * Stop a running workspace container
    */
   stopContainer: async (workspaceId: string) => {

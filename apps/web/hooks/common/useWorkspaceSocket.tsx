@@ -30,7 +30,7 @@ export const useWorkspaceSocket = ({
 
     const socketInstance = io(socketBaseUrl, {
       withCredentials: true,
-      transports: ["polling", "websocket"],
+      transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
     })
 
