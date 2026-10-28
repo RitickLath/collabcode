@@ -30,6 +30,7 @@ import { DockerModule } from './docker/docker.module';
         '.env',
       ],
     }),
+    PrismaModule,
     RedisModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -56,7 +57,6 @@ import { DockerModule } from './docker/docker.module';
       },
       inject: [ConfigService],
     }),
-    PrismaModule,
     MailModule,
     AuthModule,
     UserModule,

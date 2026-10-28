@@ -39,9 +39,13 @@ export default function ProjectEditorPage() {
     setRightChatOpen,
   } = useIdeLayout()
 
+  // Track initialized workspace to prevent duplicate React StrictMode / re-render calls
+  const initializedWorkspaceRef = React.useRef<string | null>(null)
+
   // Initialize or verify the workspace container on mount
   useEffect(() => {
-    if (workspaceId) {
+    if (workspaceId && initializedWorkspaceRef.current !== workspaceId) {
+      initializedWorkspaceRef.current = workspaceId
       initContainer(workspaceId)
     }
   }, [workspaceId, initContainer])

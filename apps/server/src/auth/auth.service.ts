@@ -37,19 +37,21 @@ export class AuthService implements OnModuleInit {
    * to ensure O(1) probabilistic username availability checks without database roundtrips.
    */
   async onModuleInit() {
-    try {
-      const users = await this.prisma.user.findMany({
-        select: { username: true },
-      });
-      for (const u of users) {
-        this.bloom.add(u.username);
+    setImmediate(async () => {
+      try {
+        const users = await this.prisma.user.findMany({
+          select: { username: true },
+        });
+        for (const u of users) {
+          this.bloom.add(u.username);
+        }
+        this.logger.log(`Initialized bloom filter with ${users.length} users`);
+      } catch (error) {
+        this.logger.warn(
+          `Could not initialize bloom filter on init: ${error.message}`,
+        );
       }
-      this.logger.log(`Initialized bloom filter with ${users.length} users`);
-    } catch (error) {
-      this.logger.warn(
-        `Could not initialize bloom filter on init: ${error.message}`,
-      );
-    }
+    });
   }
 
   /**
