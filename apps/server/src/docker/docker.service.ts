@@ -189,35 +189,76 @@ export class DockerService {
     this.logger.log(
       `[InitDocker] Step 4: Creating container ${containerName} with bind mount...`,
     );
-    const newContainer = await this.docker.createContainer({
-      name: containerName,
-      Image: image,
-      HostConfig: {
-        Binds: [`${hostPath}:/workspace:rw`],
-      },
-      WorkingDir: '/workspace',
-      Tty: true,
-      OpenStdin: true,
-      Cmd: ['/bin/sh'],
-    });
-    this.logger.log(
-      `[InitDocker] Container created with ID: ${newContainer.id}`,
-    );
+    let targetContainer: Docker.Container;
+    let targetContainerId: string;
 
-    // 5. Start the container
-    this.logger.log(
-      `[InitDocker] Step 5: Starting container ${newContainer.id}...`,
-    );
-    await newContainer.start();
-    this.logger.log(`[InitDocker] Container started successfully.`);
+    try {
+      const newContainer = await this.docker.createContainer({
+        name: containerName,
+        Image: image,
+        ExposedPorts: {
+          '3000/tcp': {},
+          '3001/tcp': {},
+          '5173/tcp': {},
+          '8080/tcp': {},
+        },
+        HostConfig: {
+          Binds: [`${hostPath}:/workspace:rw`],
+          PortBindings: {
+            '3000/tcp': [{ HostPort: '0' }], // '0' tells docker to pick a random available port
+            '3001/tcp': [{ HostPort: '0' }],
+            '5173/tcp': [{ HostPort: '0' }],
+            '8080/tcp': [{ HostPort: '0' }],
+          },
+        },
+        WorkingDir: '/workspace',
+        Tty: true,
+        OpenStdin: true,
+        Cmd: ['/bin/sh'],
+      });
+      targetContainer = newContainer;
+      targetContainerId = newContainer.id;
+      this.logger.log(
+        `[InitDocker] Container created with ID: ${targetContainerId}`,
+      );
+
+      // 5. Start the container
+      this.logger.log(
+        `[InitDocker] Step 5: Starting container ${targetContainerId}...`,
+      );
+      await targetContainer.start();
+      this.logger.log(`[InitDocker] Container started successfully.`);
+    } catch (createErr: any) {
+      // If container already exists due to parallel creation race (HTTP 409), reuse it
+      if (createErr.statusCode === 409) {
+        this.logger.warn(
+          `[InitDocker] Container ${containerName} already created by concurrent request. Reusing.`,
+        );
+        targetContainer = this.docker.getContainer(containerName);
+        const info = await targetContainer.inspect();
+        targetContainerId = info.Id;
+        if (!info.State.Running) {
+          await targetContainer.start();
+        }
+      } else {
+        throw createErr;
+      }
+    }
 
     // 6. Create or update the WorkspaceContainer record in the database
     this.logger.log(
       `[InitDocker] Step 6: Saving container record to database...`,
     );
-    const created = await this.prisma.workspaceContainer.create({
-      data: {
-        containerId: newContainer.id,
+    const created = await this.prisma.workspaceContainer.upsert({
+      where: { workspaceId },
+      update: {
+        containerId: targetContainerId,
+        containerName,
+        status: ContainerStatus.RUNNING,
+        lastActiveAt: new Date(),
+      },
+      create: {
+        containerId: targetContainerId,
         containerName,
         workspaceId,
         userId,
@@ -256,6 +297,47 @@ export class DockerService {
       where: { id: containerRecord.id },
       data: { status: ContainerStatus.STOPPED },
     });
+  }
+
+  /**
+   * Get mapped host ports and preview URLs for a running workspace container
+   */
+  async getWorkspacePorts(workspaceId: string) {
+    const container = this.docker.getContainer(
+      `collabcode-runner-${workspaceId}`,
+    );
+
+    try {
+      const inspect = await container.inspect();
+      const rawPorts = inspect.NetworkSettings?.Ports || {};
+
+      const forwardedPorts: {
+        containerPort: number;
+        hostPort: number;
+        url: string;
+      }[] = [];
+
+      // raw ports:- {"3000/tcp": [{ HostIp: "0.0.0.0", HostPort: "55000" }] }
+      for (const [containerSpec, bindings] of Object.entries(rawPorts)) {
+        if (bindings && bindings.length > 0) {
+          const containerPort = parseInt(containerSpec.split('/')[0], 10);
+          const hostPort = parseInt(bindings[0].HostPort, 10);
+
+          forwardedPorts.push({
+            containerPort,
+            hostPort,
+            url: `http://localhost:${hostPort}`,
+          });
+        }
+      }
+
+      return forwardedPorts.sort((a, b) => a.containerPort - b.containerPort);
+    } catch (err) {
+      this.logger.warn(
+        `[GetWorkspacePorts] Failed to inspect container for workspace ${workspaceId}`,
+      );
+      return [];
+    }
   }
 
   getTerminalHistory(workspaceId: string): string {

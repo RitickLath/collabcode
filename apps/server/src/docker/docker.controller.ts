@@ -40,6 +40,14 @@ export class DockerController {
   }
 
   /**
+   * Get mapped host ports and live preview URLs for running dev servers
+   */
+  @Get('workspaces/:workspaceId/ports')
+  async getWorkspacePorts(@Param('workspaceId') workspaceId: string) {
+    return await this.dockerService.getWorkspacePorts(workspaceId);
+  }
+
+  /**
    * Gracefully stop a running workspace container
    */
   @Post('workspaces/:workspaceId/stop')
