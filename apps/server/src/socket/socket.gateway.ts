@@ -108,4 +108,36 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       message: `${data.role === 'owner' ? 'owner' : 'member'} left workspace`,
     });
   }
+
+  @SubscribeMessage('file:join')
+  handleJoinFile(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      workspaceId: string;
+      path: string;
+    },
+  ) {
+    const room = `file:${data.workspaceId}:${data.path}`;
+    console.log(
+      `[SocketGateway] Client ${client.id} joining room ${room} for file ${data.path}`,
+    );
+    client.join(room);
+  }
+
+  @SubscribeMessage('file:leave')
+  handleLeftFile(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      workspaceId: string;
+      path: string;
+    },
+  ) {
+    const room = `file:${data.workspaceId}:${data.path}`;
+    console.log(
+      `[SocketGateway] Client ${client.id} leaving room ${room} for file ${data.path}`,
+    );
+    client.leave(room);
+  }
 }
